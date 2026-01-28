@@ -307,35 +307,43 @@
                 downloadAnchorNode.remove();
             };
 
-            // NUEVA FUNCIÓN: Compartir vía WhatsApp
+            // MEJORA: Función de Compartir Robusta
             const handleWhatsAppShare = async () => {
-                const fileName = "backup_rutafacil.json";
                 const jsonString = JSON.stringify(data, null, 2);
-                
+                const shareText = `Backup RutaFácil (${data.length} clientes):\n\n${jsonString.substring(0, 3000)}`;
+
+                // Nivel 1: Compartir ARCHIVO (Si el navegador lo permite)
+                if (navigator.canShare && navigator.canShare({ files: [new File([""], "test.json", {type: "application/json"})] })) {
+                    try {
+                        const file = new File([jsonString], "backup_rutafacil.json", { type: 'application/json' });
+                        await navigator.share({
+                            files: [file],
+                            title: 'Backup RutaFácil',
+                            text: 'Copia de seguridad enviada desde RutaFácil.'
+                        });
+                        return; // Éxito
+                    } catch (err) {
+                        console.log("Fallo compartir archivo, probando texto...");
+                    }
+                }
+
+                // Nivel 2: Compartir TEXTO nativo (Menú del sistema)
                 if (navigator.share) {
                     try {
-                        const file = new File([jsonString], fileName, { type: 'application/json' });
-                        // Algunos navegadores no permiten compartir archivos directamente, probamos canShare
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            await navigator.share({
-                                files: [file],
-                                title: 'Copia de Seguridad RutaFácil',
-                                text: 'Envío mi copia de seguridad de la ruta.'
-                            });
-                        } else {
-                            // Fallback: Compartir como texto
-                            await navigator.share({
-                                title: 'Backup RutaFácil',
-                                text: `MI RUTA ACTUAL (${data.length} clientes):\n\n${jsonString}`
-                            });
-                        }
-                    } catch (error) {
-                        console.log("Compartir cancelado o no soportado:", error);
+                        await navigator.share({
+                            title: 'Backup RutaFácil',
+                            text: shareText
+                        });
+                        return; // Éxito
+                    } catch (err) {
+                        console.log("Fallo compartir texto nativo, probando link directo...");
                     }
-                } else {
-                    // Fallback para navegadores antiguos: Abrir WhatsApp Web con el texto (limitado por longitud)
-                    alert("Tu navegador no soporta compartir archivos. Usa 'Descargar Copia' y envíala manualmente.");
                 }
+
+                // Nivel 3: Link Directo wa.me (Solo texto resumido para evitar límites de URL)
+                const summary = data.map(d => `- ${d.name} (${d.status === 'pending' ? 'Pendiente' : 'Listo'})`).join('\n');
+                const encodedMsg = encodeURIComponent(`MI RUTA ACTUAL:\n${summary.substring(0, 1000)}`);
+                window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
             };
 
             const handleRestore = (event) => {

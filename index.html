@@ -5,22 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RutaFácil PWA</title>
     
-    <!-- 1. PWA Manifest Theme Color -->
+    <!-- CONEXIÓN CON EL MANIFEST (Clave para instalar) -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Meta tags PWA -->
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <!-- 2. Tailwind CSS -->
+    <!-- Librerías Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 3. Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- 4. React y ReactDOM -->
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    
-    <!-- 5. Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
@@ -34,14 +31,24 @@
     
     <div id="root"></div>
 
-    <!-- 7. Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- 8. LÓGICA DE LA APP -->
+    <!-- REGISTRO DEL SERVICE WORKER -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('Error Service Worker:', err));
+            });
+        }
+    </script>
+
+    <!-- LÓGICA DE LA APP -->
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONOS INLINE (Para evitar errores de CDN externos) ---
+        // --- ICONOS INLINE ---
         const IconBase = ({ size = 24, color = "currentColor", className = "", children, ...props }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
         );
@@ -70,6 +77,7 @@
         const WifiOff = (props) => <IconBase {...props}><line x1="1" y1="1" x2="23" y2="23" /><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" /><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" /><path d="M10.71 5.05A16 16 0 0 1 22.58 9" /><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>;
         const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>;
+        const Share = (props) => <IconBase {...props}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></IconBase>;
 
         // --- COMPONENTE TARJETA DRAGGABLE ---
         const DeliveryCard = ({ item, index, onNavigate, onStatusChange, onCall, onDelete, onDragStart, onDragEnter, onDragEnd }) => {
@@ -86,7 +94,6 @@
                     onDragOver={(e) => e.preventDefault()}
                 >
                     <div className="flex items-stretch">
-                        {/* GRIP */}
                         {isPending && (
                             <div className="w-8 bg-slate-50 border-r border-slate-100 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none text-slate-400 hover:text-blue-500 hover:bg-slate-100 transition-colors">
                                 <GripVertical size={16} />
@@ -183,7 +190,6 @@
                                     </div>
                                 )}
                             </div>
-                             {/* DELETE BUTTON FOR PENDING - OPTIONAL IF USER WANTS TO DELETE PENDING TASKS TOO */}
                              {isPending && (
                                 <div className="flex justify-end mt-2 pt-2 border-t border-slate-50">
                                      <button 
@@ -224,29 +230,20 @@
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
-
-                map.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) map.removeLayer(layer);
-                });
-
+                map.eachLayer((layer) => { if (layer instanceof L.Marker) map.removeLayer(layer); });
                 const bounds = L.latLngBounds();
                 let hasPoints = false;
-
                 deliveries.forEach(delivery => {
                     if (delivery.status === 'pending' && delivery.lat && delivery.lng && delivery.lat !== 0) {
                         const marker = L.marker([delivery.lat, delivery.lng])
                         .addTo(map)
                         .bindPopup(`<b>${delivery.name}</b><br>${delivery.address}`);
-                        
                         marker.on('click', () => { if (onSelect) onSelect(delivery); });
                         bounds.extend([delivery.lat, delivery.lng]);
                         hasPoints = true;
                     }
                 });
-
-                if (hasPoints) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
+                if (hasPoints) map.fitBounds(bounds, { padding: [50, 50] });
             }, [deliveries]);
 
             return <div ref={mapContainerRef} className="h-full w-full rounded-lg shadow-inner bg-slate-200 z-0"></div>;
@@ -264,8 +261,6 @@
             const [newLng, setNewLng] = useState('');
             const [newMapLink, setNewMapLink] = useState('');
             const [newNotes, setNewNotes] = useState('');
-            
-            // Ref para input de archivo
             const fileInputRef = useRef(null);
 
             if (!isOpen) return null;
@@ -273,58 +268,35 @@
             const handleImport = () => {
                 const lines = csvText.split('\n');
                 const newItems = [];
-                
                 lines.forEach((line, index) => {
                     if (!line.trim()) return;
                     let parts = line.includes('\t') ? line.split('\t') : line.includes(';') ? line.split(';') : line.split(',');
                     parts = parts.map(p => p ? p.trim().replace(/^"|"$/g, '') : '');
-                    
                     if (parts.length >= 3) {
                         const col3 = parts[2]; 
                         const isLink = col3.toLowerCase().startsWith('http');
                         const combinedCoordsMatch = col3.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
                         let item = { id: Date.now() + index + Math.random(), name: parts[0], address: parts[1], status: 'pending', notes: '', phone: '' };
-
-                        if (isLink) {
-                            item.mapLink = col3; item.lat = 0; item.lng = 0; item.phone = parts[3]; item.notes = parts[4];
-                        } else if (combinedCoordsMatch) {
-                            item.lat = parseFloat(combinedCoordsMatch[1]); item.lng = parseFloat(combinedCoordsMatch[2]); item.phone = parts[3]; item.notes = parts[4];
-                        } else {
-                            item.lat = parseFloat(col3); item.lng = parseFloat(parts[3]); item.phone = parts[4]; item.notes = parts[5];
-                        }
+                        if (isLink) { item.mapLink = col3; item.lat = 0; item.lng = 0; item.phone = parts[3]; item.notes = parts[4]; } 
+                        else if (combinedCoordsMatch) { item.lat = parseFloat(combinedCoordsMatch[1]); item.lng = parseFloat(combinedCoordsMatch[2]); item.phone = parts[3]; item.notes = parts[4]; } 
+                        else { item.lat = parseFloat(col3); item.lng = parseFloat(parts[3]); item.phone = parts[4]; item.notes = parts[5]; }
                         if(!isNaN(item.lat) || isLink) newItems.push(item);
                     }
                 });
-
                 if (newItems.length > 0) { onImport(newItems); setCsvText(''); onClose(); alert(`Importados ${newItems.length} clientes.`); } 
-                else { alert("Error en formato. Usa: Nombre, Dirección, (Link o Lat), ..."); }
+                else { alert("Error en formato."); }
             };
 
             const handleAddSingle = (e) => {
                 e.preventDefault();
                 const item = { id: Date.now(), name: newName, address: newAddress, phone: newPhone, notes: newNotes, status: 'pending' };
-                if (entryMode === 'link') {
-                    if (!newMapLink) return alert("Falta el Link");
-                    item.mapLink = newMapLink; item.lat = 0; item.lng = 0;
-                } else {
-                    if (!newLat || !newLng) return alert("Faltan Coordenadas");
-                    item.lat = parseFloat(newLat); item.lng = parseFloat(newLng);
-                }
+                if (entryMode === 'link') { if (!newMapLink) return alert("Falta Link"); item.mapLink = newMapLink; item.lat = 0; item.lng = 0; } 
+                else { if (!newLat || !newLng) return alert("Faltan Coordenadas"); item.lat = parseFloat(newLat); item.lng = parseFloat(newLng); }
                 onAdd(item);
-                
-                // Limpieza Automatica
-                setNewName('');
-                setNewAddress('');
-                setNewPhone('');
-                setNewNotes('');
-                setNewMapLink('');
-                setNewLat('');
-                setNewLng('');
-                
-                alert("Cliente agregado. Formulario limpio.");
+                setNewName(''); setNewAddress(''); setNewPhone(''); setNewNotes(''); setNewMapLink(''); setNewLat(''); setNewLng('');
+                alert("Cliente agregado.");
             };
 
-            // --- BACKUP SYSTEM ---
             const handleExport = () => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
                 const downloadAnchorNode = document.createElement('a');
@@ -335,6 +307,37 @@
                 downloadAnchorNode.remove();
             };
 
+            // NUEVA FUNCIÓN: Compartir vía WhatsApp
+            const handleWhatsAppShare = async () => {
+                const fileName = "backup_rutafacil.json";
+                const jsonString = JSON.stringify(data, null, 2);
+                
+                if (navigator.share) {
+                    try {
+                        const file = new File([jsonString], fileName, { type: 'application/json' });
+                        // Algunos navegadores no permiten compartir archivos directamente, probamos canShare
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: 'Copia de Seguridad RutaFácil',
+                                text: 'Envío mi copia de seguridad de la ruta.'
+                            });
+                        } else {
+                            // Fallback: Compartir como texto
+                            await navigator.share({
+                                title: 'Backup RutaFácil',
+                                text: `MI RUTA ACTUAL (${data.length} clientes):\n\n${jsonString}`
+                            });
+                        }
+                    } catch (error) {
+                        console.log("Compartir cancelado o no soportado:", error);
+                    }
+                } else {
+                    // Fallback para navegadores antiguos: Abrir WhatsApp Web con el texto (limitado por longitud)
+                    alert("Tu navegador no soporta compartir archivos. Usa 'Descargar Copia' y envíala manualmente.");
+                }
+            };
+
             const handleRestore = (event) => {
                 const fileReader = new FileReader();
                 fileReader.readAsText(event.target.files[0], "UTF-8");
@@ -343,17 +346,10 @@
                         const restoredData = JSON.parse(e.target.result);
                         if(Array.isArray(restoredData)){
                             if(confirm(`Se encontraron ${restoredData.length} clientes. ¿Reemplazar lista actual?`)){
-                                onClear(); // Limpia actual
-                                onImport(restoredData); // Carga backup
-                                onClose();
-                                alert("Restauración completada.");
+                                onClear(); onImport(restoredData); onClose(); alert("Restauración completada.");
                             }
-                        } else {
-                            alert("El archivo no tiene el formato correcto.");
                         }
-                    } catch (error) {
-                        alert("Error al leer el archivo de respaldo.");
-                    }
+                    } catch (error) { alert("Error al leer archivo."); }
                 };
             };
 
@@ -379,41 +375,38 @@
                                         <button type="button" onClick={() => setEntryMode('link')} className={`flex-1 py-1 text-xs font-bold rounded ${entryMode === 'link' ? 'bg-white shadow' : 'text-slate-500'}`}>Link</button>
                                         <button type="button" onClick={() => setEntryMode('coords')} className={`flex-1 py-1 text-xs font-bold rounded ${entryMode === 'coords' ? 'bg-white shadow' : 'text-slate-500'}`}>Coord</button>
                                     </div>
-                                    {entryMode === 'link' ? (
-                                        <input value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-2 border rounded" placeholder="https://maps.app.goo.gl/..." />
-                                    ) : (
-                                        <div className="flex gap-2"><input type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-2 border rounded" placeholder="Lat" /><input type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-2 border rounded" placeholder="Lng" /></div>
-                                    )}
+                                    {entryMode === 'link' ? <input value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-2 border rounded" placeholder="Link de Maps" /> : <div className="flex gap-2"><input type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-2 border rounded" placeholder="Lat" /><input type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-2 border rounded" placeholder="Lng" /></div>}
                                     <input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-2 border rounded" placeholder="Teléfono" />
                                     <input value={newNotes} onChange={e => setNewNotes(e.target.value)} className="w-full p-2 border rounded" placeholder="Notas" />
-                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold mt-2">Guardar y Limpiar</button>
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold mt-2">Guardar</button>
                                 </form>
                             )}
                             
                             {activeTab === 'import' && (
                                 <div className="space-y-2">
-                                    <p className="text-xs text-slate-500">Orden: Nombre, Dirección, (Link o "-34.5, -58.5"), Tel, Nota</p>
-                                    <textarea value={csvText} onChange={e => setCsvText(e.target.value)} className="w-full h-32 p-2 border rounded text-xs font-mono" placeholder="Pegar datos de Excel aquí..." />
-                                    <button onClick={handleImport} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold"><Upload size={18} /> Importar</button>
+                                    <textarea value={csvText} onChange={e => setCsvText(e.target.value)} className="w-full h-32 p-2 border rounded text-xs font-mono" placeholder="Pegar datos aquí..." />
+                                    <button onClick={handleImport} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2"><Upload size={18} /> Importar</button>
                                 </div>
                             )}
 
                             {activeTab === 'backup' && (
-                                <div className="space-y-4 text-center">
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                        <h3 className="font-bold text-slate-700 mb-2">Exportar Datos</h3>
-                                        <p className="text-xs text-slate-500 mb-3">Guarda una copia de seguridad de todos tus clientes.</p>
-                                        <button onClick={handleExport} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2">
-                                            <Save size={18} /> Descargar Copia
-                                        </button>
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+                                        <h3 className="font-bold text-slate-700 mb-2 text-sm">Copia de Seguridad</h3>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={handleExport} className="bg-blue-600 text-white py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 text-xs">
+                                                <Download size={20} /> Descargar
+                                            </button>
+                                            <button onClick={handleWhatsAppShare} className="bg-green-600 text-white py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 text-xs">
+                                                <Share size={20} /> WhatsApp
+                                            </button>
+                                        </div>
                                     </div>
-
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                        <h3 className="font-bold text-slate-700 mb-2">Restaurar Datos</h3>
-                                        <p className="text-xs text-slate-500 mb-3">Sube un archivo .json previamente descargado.</p>
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+                                        <h3 className="font-bold text-slate-700 mb-2 text-sm">Restaurar Copia</h3>
                                         <input type="file" ref={fileInputRef} onChange={handleRestore} accept=".json" className="hidden" />
-                                        <button onClick={() => fileInputRef.current.click()} className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2">
-                                            <Upload size={18} /> Seleccionar Archivo
+                                        <button onClick={() => fileInputRef.current.click()} className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 text-xs">
+                                            <Upload size={18} /> Subir archivo .json
                                         </button>
                                     </div>
                                 </div>
@@ -430,17 +423,12 @@
 
         // --- APP PRINCIPAL ---
         const App = () => {
-            const initialData = [{ id: 1, name: 'Ejemplo Demo', address: 'Buenos Aires', lat: -34.6037, lng: -58.3816, phone: '', status: 'pending', notes: 'Prueba' }];
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [installPrompt, setInstallPrompt] = useState(null);
             const [deliveries, setDeliveries] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('rutafacil_data');
-                    const parsed = saved ? JSON.parse(saved) : null;
-                    return Array.isArray(parsed) ? parsed : initialData;
-                } catch (e) { return initialData; }
+                const saved = localStorage.getItem('rutafacil_data');
+                return saved ? JSON.parse(saved) : [{ id: 1, name: 'Ejemplo Demo', address: 'Buenos Aires', lat: -34.6037, lng: -58.3816, phone: '', status: 'pending', notes: 'Prueba' }];
             });
-
             const [view, setView] = useState('list'); 
             const [filter, setFilter] = useState('all'); 
             const [searchTerm, setSearchTerm] = useState('');
@@ -449,16 +437,9 @@
             const dragOverItem = useRef(null);
 
             useEffect(() => {
-                const handleStatus = () => setIsOnline(navigator.onLine);
-                const handlePrompt = (e) => { e.preventDefault(); setInstallPrompt(e); };
-                window.addEventListener('online', handleStatus);
-                window.addEventListener('offline', handleStatus);
-                window.addEventListener('beforeinstallprompt', handlePrompt);
-                return () => {
-                    window.removeEventListener('online', handleStatus);
-                    window.removeEventListener('offline', handleStatus);
-                    window.removeEventListener('beforeinstallprompt', handlePrompt);
-                };
+                window.addEventListener('online', () => setIsOnline(true));
+                window.addEventListener('offline', () => setIsOnline(false));
+                window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); setInstallPrompt(e); });
             }, []);
 
             useEffect(() => localStorage.setItem('rutafacil_data', JSON.stringify(deliveries)), [deliveries]);
@@ -470,39 +451,6 @@
                 if (outcome === 'accepted') setInstallPrompt(null);
             };
 
-            const handleStatusChange = (id, newStatus) => {
-                setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
-            };
-            
-            const handleDelete = (id) => {
-                setDeliveries(prev => prev.filter(d => d.id !== id));
-            };
-
-            const openNavigation = (item) => {
-                if (item.mapLink) window.open(item.mapLink, '_blank');
-                else window.open(`https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`, '_blank');
-            };
-
-            const handleDragEnd = () => {
-                if (searchTerm !== '') return; 
-                const newDeliveries = [...deliveries];
-                const visibleItems = filteredDeliveries;
-                const movedItem = visibleItems[dragItem.current];
-                const targetItem = visibleItems[dragOverItem.current];
-                
-                if (!movedItem || !targetItem || movedItem === targetItem) return;
-
-                const realSource = newDeliveries.findIndex(d => d.id === movedItem.id);
-                const realTarget = newDeliveries.findIndex(d => d.id === targetItem.id);
-                
-                const itemContent = newDeliveries[realSource];
-                newDeliveries.splice(realSource, 1);
-                newDeliveries.splice(realTarget, 0, itemContent);
-                setDeliveries(newDeliveries);
-                dragItem.current = null;
-                dragOverItem.current = null;
-            };
-
             const filteredDeliveries = deliveries.filter(d => {
                 const term = searchTerm.toLowerCase();
                 const matchSearch = (d.name || '').toLowerCase().includes(term) || (d.address || '').toLowerCase().includes(term);
@@ -510,41 +458,41 @@
                 return matchSearch && matchFilter;
             });
 
+            const handleDragEnd = () => {
+                if (searchTerm !== '') return; 
+                const newDeliveries = [...deliveries];
+                const visibleItems = filteredDeliveries;
+                const movedItem = visibleItems[dragItem.current];
+                const targetItem = visibleItems[dragOverItem.current];
+                if (!movedItem || !targetItem || movedItem === targetItem) return;
+                const realSource = newDeliveries.findIndex(d => d.id === movedItem.id);
+                const realTarget = newDeliveries.findIndex(d => d.id === targetItem.id);
+                const itemContent = newDeliveries[realSource];
+                newDeliveries.splice(realSource, 1);
+                newDeliveries.splice(realTarget, 0, itemContent);
+                setDeliveries(newDeliveries);
+            };
+
             const pendingCount = deliveries.filter(d => d.status === 'pending').length;
             const progress = deliveries.length === 0 ? 0 : Math.round((deliveries.filter(d => d.status === 'delivered').length / deliveries.length) * 100);
 
             return (
                 <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-800">
-                    <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white p-3 shadow-md transition-colors duration-500 z-10`}>
+                    <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white p-3 shadow-md transition-colors z-10`}>
                         <div className="flex justify-between items-center mb-2">
                             <div className="flex items-center gap-2">
-                                <div className={`${isOnline ? 'bg-blue-500' : 'bg-slate-600'} p-2 rounded-lg`}>
-                                    <Package size={20} />
-                                </div>
-                                <div>
-                                    <h1 className="text-lg font-bold leading-tight">RutaFácil</h1>
-                                    <p className="text-xs opacity-90 flex items-center gap-1">
-                                        {isOnline ? <span className="flex items-center gap-1 text-blue-100"><Wifi size={10} /> Online</span> : <span className="flex items-center gap-1 text-orange-300 font-bold"><WifiOff size={10} /> Offline</span>}
-                                        • {pendingCount} pendientes
-                                    </p>
-                                </div>
+                                <div className="bg-white/20 p-2 rounded-lg"><Package size={20} /></div>
+                                <div><h1 className="text-lg font-bold leading-tight">RutaFácil</h1><p className="text-[10px] opacity-90">{isOnline ? 'Online' : 'Offline'} • {pendingCount} pendientes</p></div>
                             </div>
                             <div className="flex gap-2">
-                                {installPrompt && (
-                                    <button onClick={handleInstall} className="flex items-center gap-1 px-3 py-1 bg-white text-blue-600 rounded-full text-xs font-bold shadow-sm animate-pulse">
-                                        <Download size={14} /> Instalar
-                                    </button>
-                                )}
+                                {installPrompt && <button onClick={handleInstall} className="bg-white text-blue-600 p-2 rounded-full"><Download size={18} /></button>}
                                 <button onClick={() => setIsManagerOpen(true)} className="p-2 bg-white/20 rounded-full"><Settings size={18} /></button>
-                                <button onClick={() => {if(confirm("Reiniciar día?")) setDeliveries(p=>p.map(d=>({...d, status:'pending'})))}} className="p-2 bg-white/20 rounded-full"><RotateCcw size={18} /></button>
+                                <button onClick={() => {if(confirm("¿Reiniciar día?")) setDeliveries(p=>p.map(d=>({...d, status:'pending'})))}} className="p-2 bg-white/20 rounded-full"><RotateCcw size={18} /></button>
                             </div>
                         </div>
                     </header>
-
                     <div className="bg-white p-3 shadow-sm border-b border-slate-200">
-                        <div className="w-full bg-slate-200 h-2 rounded-full mb-3 overflow-hidden">
-                            <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-                        </div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full mb-3 overflow-hidden"><div className="bg-green-500 h-full transition-all" style={{ width: `${progress}%` }}></div></div>
                         <div className="flex justify-between items-center gap-2">
                             <div className="flex bg-slate-100 rounded-lg p-1">
                                 <button onClick={() => setView('list')} className={`p-2 rounded-md ${view === 'list' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><List size={18} /></button>
@@ -556,30 +504,20 @@
                             </div>
                         </div>
                     </div>
-
-                    <main className="flex-1 overflow-hidden relative bg-slate-50">
-                        {view === 'map' ? (
-                            <div className="h-full w-full relative z-0">
-                                <SimpleMap deliveries={deliveries} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} />
-                            </div>
-                        ) : (
+                    <main className="flex-1 overflow-hidden relative">
+                        {view === 'map' ? <SimpleMap deliveries={deliveries} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} /> : (
                             <div className="h-full overflow-y-auto p-4 space-y-3 pb-20">
                                 <div className="flex gap-2 mb-2 overflow-x-auto pb-1 no-scrollbar">
-                                    <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Todos</button>
-                                    <button onClick={() => setFilter('pending')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'pending' ? 'bg-orange-500 text-white' : 'bg-white'}`}>Pendientes</button>
-                                    <button onClick={() => setFilter('completed')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'completed' ? 'bg-green-600 text-white' : 'bg-white'}`}>Listos</button>
+                                    <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold border ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Todos</button>
+                                    <button onClick={() => setFilter('pending')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold border ${filter === 'pending' ? 'bg-orange-500 text-white' : 'bg-white'}`}>Pendientes</button>
+                                    <button onClick={() => setFilter('completed')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold border ${filter === 'completed' ? 'bg-green-600 text-white' : 'bg-white'}`}>Listos</button>
                                 </div>
-                                {filteredDeliveries.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-12 text-slate-400"><Package size={32} /><p>Sin entregas</p></div>
-                                ) : (
-                                    filteredDeliveries.map((item, index) => (
-                                        <DeliveryCard key={item.id} index={index} item={item} onNavigate={openNavigation} onStatusChange={handleStatusChange} onDelete={handleDelete} onCall={(phone) => window.open(`tel:${phone}`, '_self')} onDragStart={(e, pos) => {dragItem.current=pos}} onDragEnter={(e, pos) => {dragOverItem.current=pos}} onDragEnd={handleDragEnd} />
-                                    ))
-                                )}
+                                {filteredDeliveries.map((item, index) => (
+                                    <DeliveryCard key={item.id} index={index} item={item} onNavigate={(i) => { if(i.mapLink) window.open(i.mapLink, '_blank'); else window.open(`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`, '_blank'); }} onStatusChange={(id, s) => setDeliveries(p => p.map(d => d.id === id ? { ...d, status: s } : d))} onDelete={(id) => setDeliveries(p => p.filter(d => d.id !== id))} onCall={(ph) => window.open(`tel:${ph}`, '_self')} onDragStart={(e, pos) => {dragItem.current=pos}} onDragEnter={(e, pos) => {dragOverItem.current=pos}} onDragEnd={handleDragEnd} />
+                                ))}
                             </div>
                         )}
                     </main>
-
                     <DataManager isOpen={isManagerOpen} onClose={() => setIsManagerOpen(false)} onImport={(d) => setDeliveries(prev => [...prev, ...d])} onAdd={(d) => setDeliveries(prev => [...prev, d])} onClear={() => setDeliveries([])} data={deliveries} />
                 </div>
             );

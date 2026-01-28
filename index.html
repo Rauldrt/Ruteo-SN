@@ -1,0 +1,727 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  MapPin, 
+  Navigation, 
+  CheckCircle, 
+  XCircle, 
+  Phone, 
+  List, 
+  Map as MapIcon, 
+  Package, 
+  Search,
+  RotateCcw,
+  Settings,
+  Plus,
+  Upload,
+  Trash2,
+  Link as LinkIcon,
+  X,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Wifi,
+  WifiOff,
+  Download
+} from 'lucide-react';
+
+// --- COMPONENTE TARJETA DRAGGABLE ---
+const DeliveryCard = ({ item, index, onNavigate, onStatusChange, onCall, onDragStart, onDragEnter, onDragEnd }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const isPending = item.status === 'pending';
+
+  return (
+    <div 
+        className={`bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden transition-all group ${!isPending ? 'opacity-60 bg-slate-50' : ''}`}
+        draggable={isPending} // Solo permitir arrastrar si está pendiente
+        onDragStart={(e) => isPending && onDragStart(e, index)}
+        onDragEnter={(e) => isPending && onDragEnter(e, index)}
+        onDragEnd={onDragEnd}
+        onDragOver={(e) => e.preventDefault()} // Necesario para permitir el drop
+    >
+        {/* CABECERA - SIEMPRE VISIBLE */}
+        <div className="flex items-stretch">
+            {/* ÁREA DE GRIP (AGARRE) - Solo visible/útil si está pendiente */}
+            {isPending && (
+                <div className="w-8 bg-slate-50 border-r border-slate-100 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none text-slate-400 hover:text-blue-500 hover:bg-slate-100 transition-colors">
+                    <GripVertical size={16} />
+                </div>
+            )}
+
+            <div 
+                className="flex-1 p-3 flex items-center justify-between cursor-pointer active:bg-slate-50 select-none"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2">
+                        <h3 className={`font-bold text-slate-800 text-sm truncate ${!isPending && 'line-through decoration-slate-400'}`}>
+                            {item.name}
+                        </h3>
+                        {/* Badge de estado minimalista */}
+                        {!isPending && (
+                            item.status === 'delivered' 
+                            ? <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            : <XCircle size={16} className="text-red-600 flex-shrink-0" />
+                        )}
+                    </div>
+                    <div className="flex items-center text-slate-500 text-xs mt-1">
+                        {item.mapLink ? <LinkIcon size={12} className="mr-1 text-orange-500 flex-shrink-0"/> : <MapPin size={12} className="mr-1 text-blue-500 flex-shrink-0"/>}
+                        <span className="truncate">{item.address}</span>
+                    </div>
+                </div>
+                
+                <button className="text-slate-400 p-1">
+                    {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </button>
+            </div>
+        </div>
+
+        {/* CONTENIDO DESPLEGABLE */}
+        {isOpen && (
+            <div className={`px-3 pb-3 pt-1 border-t border-slate-100 bg-white ${isPending ? 'ml-8' : ''}`}>
+                {/* Notas */}
+                {item.notes && (
+                    <div className="mt-2 text-xs p-2 bg-yellow-50 text-yellow-800 rounded border border-yellow-100 mb-3 leading-relaxed">
+                        <span className="font-bold">Nota:</span> {item.notes}
+                    </div>
+                )}
+
+                {/* FILA DE ACCIONES */}
+                <div className="flex items-center justify-between gap-2 mt-2">
+                    {isPending ? (
+                        <>
+                            {/* GRUPO IZQUIERDA: HERRAMIENTAS */}
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onNavigate(item); }}
+                                    className="bg-blue-600 text-white w-11 h-11 rounded-lg flex items-center justify-center shadow-md shadow-blue-200 active:scale-95 transition-transform"
+                                    title={item.mapLink ? "Abrir Link" : "Navegar GPS"}
+                                >
+                                    {item.mapLink ? <LinkIcon size={20} /> : <Navigation size={20} />}
+                                </button>
+
+                                {item.phone && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onCall(item.phone); }}
+                                        className="bg-slate-100 text-slate-600 border border-slate-200 w-11 h-11 rounded-lg flex items-center justify-center active:scale-95 transition-transform"
+                                        title="Llamar"
+                                    >
+                                        <Phone size={20} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* GRUPO DERECHA: ESTADO */}
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'failed'); }}
+                                    className="bg-white text-red-500 w-11 h-11 rounded-lg flex items-center justify-center border border-red-200 hover:bg-red-50 active:scale-95 transition-transform"
+                                    title="No Entregado"
+                                >
+                                    <XCircle size={24} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'delivered'); }}
+                                    className="bg-green-500 text-white w-11 h-11 rounded-lg flex items-center justify-center shadow-md shadow-green-200 active:scale-95 transition-transform"
+                                    title="Entregado"
+                                >
+                                    <CheckCircle size={24} />
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex justify-end w-full">
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'pending'); }}
+                                className="text-slate-500 text-xs flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg hover:bg-slate-200"
+                            >
+                                <RotateCcw size={14} /> Deshacer Estado
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+    </div>
+  );
+};
+
+// --- COMPONENTE MAPA (LEAFLET ROBUSTO) ---
+const SimpleMap = ({ deliveries, onSelect }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const [isLeafletReady, setIsLeafletReady] = useState(false);
+
+  useEffect(() => {
+    if (window.L && typeof window.L.map === 'function') {
+      setIsLeafletReady(true);
+      return;
+    }
+    const loadLeaflet = () => {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+      if (!document.getElementById('leaflet-js')) {
+        const script = document.createElement('script');
+        script.id = 'leaflet-js';
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.async = true;
+        script.onload = () => {
+          setTimeout(() => {
+            if (window.L && typeof window.L.map === 'function') setIsLeafletReady(true);
+          }, 100);
+        };
+        document.body.appendChild(script);
+      } else {
+        const interval = setInterval(() => {
+          if (window.L && typeof window.L.map === 'function') {
+            setIsLeafletReady(true);
+            clearInterval(interval);
+          }
+        }, 200);
+        return () => clearInterval(interval);
+      }
+    };
+    loadLeaflet();
+  }, []);
+
+  useEffect(() => {
+    if (!isLeafletReady || !mapContainerRef.current) return;
+    if (mapInstanceRef.current) return; 
+
+    try {
+      const map = window.L.map(mapContainerRef.current).setView([-34.6037, -58.3816], 12);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      mapInstanceRef.current = map;
+      setTimeout(() => map.invalidateSize(), 200);
+    } catch (error) {
+      console.error("Error mapa:", error);
+    }
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [isLeafletReady]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !window.L) return;
+
+    map.eachLayer((layer) => {
+      if (layer instanceof window.L.Marker) map.removeLayer(layer);
+    });
+
+    const bounds = window.L.latLngBounds();
+    let hasPoints = false;
+
+    deliveries.forEach(delivery => {
+      if (delivery.status === 'pending' && delivery.lat && delivery.lng && delivery.lat !== 0) {
+        const marker = window.L.marker([delivery.lat, delivery.lng])
+          .addTo(map)
+          .bindPopup(`<b>${delivery.name}</b><br>${delivery.address}`);
+        
+        marker.on('click', () => {
+             if (onSelect) onSelect(delivery);
+        });
+
+        bounds.extend([delivery.lat, delivery.lng]);
+        hasPoints = true;
+      }
+    });
+
+    if (hasPoints) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [deliveries, isLeafletReady]);
+
+  return <div ref={mapContainerRef} className="h-full w-full rounded-lg shadow-inner bg-slate-200 z-0" />;
+};
+
+// --- COMPONENTE MODAL DE GESTIÓN DE DATOS ---
+const DataManager = ({ isOpen, onClose, onImport, onAdd, onClear }) => {
+  const [activeTab, setActiveTab] = useState('add'); 
+  const [csvText, setCsvText] = useState('');
+  const [entryMode, setEntryMode] = useState('link');
+  const [newName, setNewName] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newLat, setNewLat] = useState('');
+  const [newLng, setNewLng] = useState('');
+  const [newMapLink, setNewMapLink] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleImport = () => {
+    const lines = csvText.split('\n');
+    const newItems = [];
+    let errorCount = 0;
+    
+    lines.forEach((line, index) => {
+      if (!line.trim()) return;
+      
+      let parts;
+      if (line.includes('\t')) parts = line.split('\t');
+      else if (line.includes(';')) parts = line.split(';');
+      else parts = line.split(',');
+
+      parts = parts.map(p => p ? p.trim().replace(/^"|"$/g, '') : '');
+      
+      if (parts.length >= 3) {
+        const col3 = parts[2]; 
+        const isLink = col3.toLowerCase().startsWith('http');
+        const combinedCoordsMatch = col3.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+
+        let item = {
+          id: Date.now() + index + Math.random(),
+          name: parts[0] || 'Sin Nombre',
+          address: parts[1] || '',
+          status: 'pending',
+          notes: '',
+          phone: ''
+        };
+
+        if (isLink) {
+          item.mapLink = col3;
+          item.lat = 0;
+          item.lng = 0;
+          item.phone = parts[3] || '';
+          item.notes = parts[4] || '';
+        } else if (combinedCoordsMatch) {
+          item.lat = parseFloat(combinedCoordsMatch[1]);
+          item.lng = parseFloat(combinedCoordsMatch[2]);
+          item.mapLink = null;
+          item.phone = parts[3] || '';
+          item.notes = parts[4] || '';
+        } else {
+          const latVal = parseFloat(col3);
+          if (!isNaN(latVal)) {
+            item.lat = latVal;
+            item.lng = parseFloat(parts[3] || 0);
+            item.mapLink = null;
+            item.phone = parts[4] || '';
+            item.notes = parts[5] || '';
+          } else {
+            errorCount++;
+            return;
+          }
+        }
+        newItems.push(item);
+      } else {
+        errorCount++;
+      }
+    });
+
+    if (newItems.length > 0) {
+      onImport(newItems);
+      setCsvText('');
+      alert(`¡Éxito! Se importaron ${newItems.length} clientes.`);
+      if (errorCount > 0) alert(`Atención: ${errorCount} líneas tenían formato incorrecto y se ignoraron.`);
+      onClose();
+    } else {
+      alert("No se pudieron leer los datos. Verifica el formato.");
+    }
+  };
+
+  const handleAddSingle = (e) => {
+    e.preventDefault();
+    if (!newName) {
+      alert("El nombre es obligatorio");
+      return;
+    }
+
+    const item = {
+      id: Date.now(),
+      name: newName,
+      address: newAddress,
+      phone: newPhone,
+      notes: newNotes,
+      status: 'pending'
+    };
+
+    if (entryMode === 'link') {
+      if (!newMapLink) { alert("Ingresa el link de Maps"); return; }
+      item.mapLink = newMapLink;
+      item.lat = 0;
+      item.lng = 0;
+    } else {
+      if (!newLat || !newLng) { alert("Ingresa latitud y longitud"); return; }
+      item.lat = parseFloat(newLat);
+      item.lng = parseFloat(newLng);
+      item.mapLink = null;
+    }
+    onAdd(item);
+    setNewName('');
+    setNewAddress('');
+    setNewPhone('');
+    setNewNotes('');
+    alert("Cliente agregado");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Settings size={20} /> Gestión de Datos
+          </h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-4">
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setActiveTab('add')} className={`flex-1 py-2 text-sm font-medium rounded-lg border ${activeTab === 'add' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-slate-200 text-slate-600'}`}>
+              Agregar Uno
+            </button>
+            <button onClick={() => setActiveTab('import')} className={`flex-1 py-2 text-sm font-medium rounded-lg border ${activeTab === 'import' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-slate-200 text-slate-600'}`}>
+              Importar CSV
+            </button>
+          </div>
+          {activeTab === 'add' ? (
+            <form onSubmit={handleAddSingle} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre Cliente *</label>
+                <input required value={newName} onChange={e => setNewName(e.target.value)} className="w-full p-2 border rounded" placeholder="Ej: Kiosco Pepe" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Dirección (Ref)</label>
+                <input value={newAddress} onChange={e => setNewAddress(e.target.value)} className="w-full p-2 border rounded" placeholder="Ej: Av. Siempreviva 123" />
+              </div>
+              <div className="flex gap-2 bg-slate-100 p-1 rounded-lg mb-2">
+                 <button type="button" onClick={() => setEntryMode('link')} className={`flex-1 py-1 text-xs font-bold rounded ${entryMode === 'link' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Usar Link Maps</button>
+                 <button type="button" onClick={() => setEntryMode('coords')} className={`flex-1 py-1 text-xs font-bold rounded ${entryMode === 'coords' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Usar Coordenadas</button>
+              </div>
+              {entryMode === 'link' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Link de Google Maps *</label>
+                  <input value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-2 border rounded" placeholder="https://maps.app.goo.gl/..." />
+                  <p className="text-[10px] text-slate-400 mt-1">* Nota: Los clientes con link no aparecerán en el mapa interno, pero el GPS funcionará igual.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Latitud *</label>
+                    <input type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-2 border rounded" placeholder="-34.xxxx" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Longitud *</label>
+                    <input type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-2 border rounded" placeholder="-58.xxxx" />
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Teléfono</label>
+                    <input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-2 border rounded" placeholder="11-xxxx-xxxx" />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notas</label>
+                    <input value={newNotes} onChange={e => setNewNotes(e.target.value)} className="w-full p-2 border rounded" placeholder="Horario..." />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 flex items-center justify-center gap-2 mt-4"><Plus size={18} /> Agregar Cliente</button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100">
+                <p className="font-bold mb-1">Formatos Aceptados (Orden de Columnas):</p>
+                <div className="space-y-1 opacity-80">
+                    <p>1. <b>Con Link:</b> Nombre, Dirección, <u>Link</u>, Tel, Nota</p>
+                    <p>2. <b>Coords Juntas:</b> Nombre, Dirección, <u>"-34.5, -58.5"</u>, Tel, Nota</p>
+                    <p>3. <b>Coords Separadas:</b> Nombre, Dirección, <u>Lat, Lng</u>, Tel, Nota</p>
+                </div>
+              </div>
+              <textarea 
+                value={csvText}
+                onChange={e => setCsvText(e.target.value)}
+                className="w-full h-32 p-2 border rounded text-xs font-mono"
+                placeholder={`Juan, Calle 1, "-34.55, -58.44", 112233, Nota\nPedro, Calle 2, https://maps..., 445566, Nota`}
+              />
+              <button onClick={handleImport} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2"><Upload size={18} /> Importar Datos</button>
+            </div>
+          )}
+          <div className="border-t mt-6 pt-4">
+            <button onClick={() => { if(confirm("¿Borrar todos los clientes?")) { onClear(); onClose(); } }} className="w-full py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 flex items-center justify-center gap-2 text-sm"><Trash2 size={16} /> Borrar Todo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
+export default function App() {
+  const initialData = [
+    { id: 1, name: 'Ejemplo Coordenadas', address: 'Obelisco', lat: -34.6037, lng: -58.3816, phone: '', status: 'pending', notes: 'Se ve en mapa' },
+    { id: 2, name: 'Ejemplo Link', address: 'Abasto', mapLink: 'https://maps.app.goo.gl/ejemplo', lat: 0, lng: 0, phone: '', status: 'pending', notes: 'Solo botón GPS' },
+  ];
+
+  // Estado PWA (Instalación y Red)
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  const [deliveries, setDeliveries] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rutafacil_data');
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed : initialData;
+    } catch (e) {
+      return initialData;
+    }
+  });
+
+  const [view, setView] = useState('list'); 
+  const [filter, setFilter] = useState('all'); 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isManagerOpen, setIsManagerOpen] = useState(false);
+  
+  // Drag & Drop State
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+
+  // EFECTOS PWA: Red e Instalación
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    // Capturar evento de instalación
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem('rutafacil_data', JSON.stringify(deliveries));
+  }, [deliveries]);
+
+  const handleStatusChange = (id, newStatus) => {
+    setDeliveries(prev => prev.map(d => 
+      d.id === id ? { ...d, status: newStatus } : d
+    ));
+  };
+
+  const openNavigation = (item) => {
+    if (item.mapLink) {
+        window.open(item.mapLink, '_blank');
+    } else {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`, '_blank');
+    }
+  };
+
+  const callClient = (phone) => window.open(`tel:${phone}`, '_self');
+
+  const resetDay = () => {
+    if (confirm('¿Reiniciar entregas a "Pendiente"?')) {
+      setDeliveries(prev => prev.map(d => ({ ...d, status: 'pending' })));
+    }
+  };
+
+  // --- LÓGICA DE DRAG AND DROP ---
+  const handleDragStart = (e, position) => {
+    dragItem.current = position;
+  };
+
+  const handleDragEnter = (e, position) => {
+    dragOverItem.current = position;
+  };
+
+  const handleDragEnd = () => {
+    // Solo permitir reordenar si no hay búsqueda activa y estamos viendo todos o pendientes
+    // La reordenación se basa en la lista renderizada, así que debemos tener cuidado con los índices
+    if (searchTerm !== '') return; // Evitar reordenar si hay filtro de búsqueda
+    
+    // Obtenemos una copia profunda de las entregas actuales
+    const newDeliveries = [...deliveries];
+    
+    // Necesitamos mapear los índices visuales a los índices reales del array
+    // Esto es simplificado: asume que 'filteredDeliveries' son los que se muestran
+    // y que queremos reordenar ESOS elementos dentro del array principal.
+    
+    // Sin embargo, para simplicidad y robustez:
+    // El Drag&Drop solo funciona bien cuando lo que ves es exactamente lo que hay en el estado.
+    // O si usamos IDs. Aquí usaremos índices directos sobre la lista FILTRADA.
+    
+    // 1. Identificar el item que se mueve y el item destino en la lista filtrada
+    const visibleItems = filteredDeliveries;
+    const movedItem = visibleItems[dragItem.current];
+    const targetItem = visibleItems[dragOverItem.current];
+
+    if (!movedItem || !targetItem || movedItem === targetItem) {
+        dragItem.current = null;
+        dragOverItem.current = null;
+        return;
+    }
+
+    // 2. Encontrar sus índices reales en el array principal 'deliveries'
+    const realSourceIndex = newDeliveries.findIndex(d => d.id === movedItem.id);
+    const realTargetIndex = newDeliveries.findIndex(d => d.id === targetItem.id);
+
+    // 3. Mover en el array principal
+    const itemContent = newDeliveries[realSourceIndex];
+    newDeliveries.splice(realSourceIndex, 1); // Quitar
+    newDeliveries.splice(realTargetIndex, 0, itemContent); // Insertar
+
+    setDeliveries(newDeliveries);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
+  // Filtrado y Lógica
+  const safeDeliveries = Array.isArray(deliveries) ? deliveries : [];
+  const filteredDeliveries = safeDeliveries.filter(d => {
+    if (!d || typeof d !== 'object') return false; 
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = (d.name || '').toLowerCase().includes(term) || (d.address || '').toLowerCase().includes(term);
+    const matchesFilter = filter === 'all' ? true : filter === 'pending' ? d.status === 'pending' : d.status !== 'pending'; 
+    return matchesSearch && matchesFilter;
+  });
+
+  const pendingCount = safeDeliveries.filter(d => d.status === 'pending').length;
+  const progress = safeDeliveries.length === 0 ? 0 : Math.round((safeDeliveries.filter(d => d.status === 'delivered').length / safeDeliveries.length) * 100);
+  const invisibleOnMapCount = safeDeliveries.filter(d => d.status === 'pending' && (!d.lat || d.lat === 0)).length;
+
+  return (
+    <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-800">
+      
+      {/* HEADER */}
+      <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white p-3 shadow-md transition-colors duration-500 z-10`}>
+        <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+              <div className={`${isOnline ? 'bg-blue-500' : 'bg-slate-600'} p-2 rounded-lg transition-colors`}>
+                  <Package size={20} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold leading-tight">RutaFácil</h1>
+                <p className="text-xs opacity-90 flex items-center gap-1">
+                    {isOnline ? (
+                        <span className="flex items-center gap-1 text-blue-100"><Wifi size={10} /> Online</span>
+                    ) : (
+                        <span className="flex items-center gap-1 text-orange-300 font-bold"><WifiOff size={10} /> Offline</span>
+                    )}
+                    • {pendingCount} pendientes
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              {/* Botón Instalar (Solo visible si el navegador lo permite) */}
+              {installPrompt && (
+                  <button 
+                    onClick={handleInstallClick}
+                    className="flex items-center gap-1 px-3 py-1 bg-white text-blue-600 rounded-full text-xs font-bold shadow-sm animate-pulse"
+                  >
+                    <Download size={14} /> Instalar
+                  </button>
+              )}
+              
+              <button onClick={() => setIsManagerOpen(true)} className={`p-2 rounded-full transition shadow-sm border ${isOnline ? 'bg-blue-700 hover:bg-blue-800 border-blue-500' : 'bg-slate-600 border-slate-500'}`}><Settings size={18} /></button>
+              <button onClick={resetDay} className={`p-2 rounded-full transition shadow-sm border ${isOnline ? 'bg-blue-700 hover:bg-blue-800 border-blue-500' : 'bg-slate-600 border-slate-500'}`}><RotateCcw size={18} /></button>
+            </div>
+        </div>
+      </header>
+
+      {/* BARRA SUPERIOR */}
+      <div className="bg-white p-3 shadow-sm border-b border-slate-200">
+        <div className="w-full bg-slate-200 h-2 rounded-full mb-3 overflow-hidden">
+          <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+        </div>
+        
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            <button onClick={() => setView('list')} className={`p-2 rounded-md flex items-center gap-1 text-sm font-medium transition ${view === 'list' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><List size={18} /></button>
+            <button onClick={() => setView('map')} className={`p-2 rounded-md flex items-center gap-1 text-sm font-medium transition ${view === 'map' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}><MapIcon size={18} /></button>
+          </div>
+          <div className="relative flex-1">
+            <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-2 py-2 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            <Search className="absolute left-2 top-2.5 text-slate-400" size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* CONTENIDO */}
+      <main className="flex-1 overflow-hidden relative bg-slate-50">
+        {view === 'map' ? (
+          <div className="h-full w-full relative z-0">
+             {invisibleOnMapCount > 0 && (
+                 <div className="absolute top-2 left-2 right-2 bg-yellow-100 border border-yellow-300 text-yellow-800 text-xs p-2 rounded z-[1000] shadow-md flex items-center gap-2 opacity-90">
+                     <AlertTriangle size={16} />
+                     <span>{invisibleOnMapCount} entregas usan Link y no se ven aquí.</span>
+                 </div>
+             )}
+            <SimpleMap deliveries={safeDeliveries} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto p-4 space-y-3 pb-20">
+            {/* TABS */}
+            <div className="flex gap-2 mb-2 overflow-x-auto pb-1 no-scrollbar">
+               <button onClick={() => setFilter('all')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Todos</button>
+               <button onClick={() => setFilter('pending')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'pending' ? 'bg-orange-500 text-white' : 'bg-white'}`}>Pendientes</button>
+               <button onClick={() => setFilter('completed')} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${filter === 'completed' ? 'bg-green-600 text-white' : 'bg-white'}`}>Listos</button>
+            </div>
+
+            {filteredDeliveries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                <Package className="opacity-50 mb-2" size={32} />
+                <p>Sin entregas</p>
+                {safeDeliveries.length === 0 && <button onClick={() => setIsManagerOpen(true)} className="mt-4 text-blue-600 text-sm font-bold underline">Cargar datos</button>}
+              </div>
+            ) : (
+              filteredDeliveries.map((item, index) => (
+                <DeliveryCard 
+                    key={item.id}
+                    index={index} 
+                    item={item} 
+                    onNavigate={openNavigation}
+                    onStatusChange={handleStatusChange}
+                    onCall={callClient}
+                    onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
+                    onDragEnd={handleDragEnd}
+                />
+              ))
+            )}
+            
+            {/* Mensaje de ayuda si hay búsqueda activa */}
+            {searchTerm && filteredDeliveries.length > 0 && (
+                <p className="text-center text-xs text-slate-400 mt-4">
+                    Borra la búsqueda para reordenar las tarjetas.
+                </p>
+            )}
+          </div>
+        )}
+      </main>
+
+      <DataManager isOpen={isManagerOpen} onClose={() => setIsManagerOpen(false)} onImport={(d) => setDeliveries(prev => [...prev, ...d])} onAdd={(d) => setDeliveries(prev => [...prev, d])} onClear={() => setDeliveries([])} />
+    </div>
+  );
+}

@@ -82,6 +82,17 @@
         .expandable-section {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* FAB Animation */
+        .fab-menu-enter {
+            transform: scale(0.8) translateY(20px);
+            opacity: 0;
+        }
+        .fab-menu-active {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            transition: all 0.2s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -116,7 +127,7 @@
         const Database = (props) => <IconBase {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></IconBase>;
         const LinkIcon = (props) => <IconBase {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></IconBase>;
         const ChevronDown = (props) => <IconBase {...props}><path d="m6 9 6 6 6-6" /></IconBase>;
-        const GripVertical = (props) => <IconBase {...props}><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></IconBase>;
+        const GripVertical = (props) => <IconBase {...props}><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" y="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></IconBase>;
         const Share = (props) => <IconBase {...props}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>;
         const Upload = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></IconBase>;
@@ -172,7 +183,6 @@
 
             const handleBulkImport = () => {
                 const lines = csvText.split('\n');
-                let count = 0;
                 const newMasterItems = [];
 
                 lines.forEach((line, index) => {
@@ -232,7 +242,6 @@
                         
                         if (onAdd) onAdd({...item, id: Date.now() + index + Math.random() + 1});
                         newMasterItems.push(item);
-                        count++;
                     }
                 });
 
@@ -437,9 +446,10 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [masterSearchTerm, setMasterSearchTerm] = useState(''); 
             const [expandedMasterId, setExpandedMasterId] = useState(null); 
-            const [isMasterSectionExpanded, setIsMasterSectionExpanded] = useState(false); // Estado para expandir toda la Base Maestra
+            const [isMasterSectionExpanded, setIsMasterSectionExpanded] = useState(false); 
             const [filter, setFilter] = useState('all');
             const [modalConfig, setModalConfig] = useState({ isOpen: false, type: '', title: '', data: null });
+            const [isFabMenuOpen, setIsFabMenuOpen] = useState(false); // FAB state
             
             useEffect(() => {
                 const handleNet = () => setIsOnline(navigator.onLine);
@@ -476,6 +486,7 @@
 
             const openModal = (type, title, data = null) => {
                 setModalConfig({ isOpen: true, type, title, data });
+                setIsFabMenuOpen(false); // Close FAB after action
             };
 
             const closeModal = () => {
@@ -556,6 +567,55 @@
                 );
             };
 
+            // Floating Action Button Component
+            const FAB = () => {
+                if (view === 'settings') return null;
+
+                if (view === 'dashboard') {
+                    return (
+                        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+                            {isFabMenuOpen && (
+                                <div className="flex flex-col items-end gap-3 mb-2 animate-fade-in">
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-slate-800 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg">Ajustes Sistema</span>
+                                        <button onClick={() => { setView('settings'); setIsFabMenuOpen(false); }} className="w-12 h-12 bg-white text-slate-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all">
+                                            <Settings size={22} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-slate-800 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg">Nueva Ruta</span>
+                                        <button onClick={() => openModal('createRoute', 'Nueva Ruta')} className="w-12 h-12 bg-white text-blue-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all">
+                                            <Folder size={22} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            <button 
+                                onClick={() => setIsFabMenuOpen(!isFabMenuOpen)} 
+                                className={`w-16 h-16 rounded-[1.5rem] shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-95 ${isFabMenuOpen ? 'bg-slate-800 text-white rotate-45' : 'bg-blue-600 text-white'}`}
+                            >
+                                <Plus size={32} />
+                            </button>
+                        </div>
+                    );
+                }
+
+                if (view === 'list' || view === 'map') {
+                    return (
+                        <div className="fixed bottom-6 right-6 z-50">
+                            <button 
+                                onClick={() => setIsManagerOpen(true)}
+                                className="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center active:scale-95 transition-all"
+                            >
+                                <Plus size={32} />
+                            </button>
+                        </div>
+                    );
+                }
+                
+                return null;
+            };
+
             const renderView = () => {
                 if (view === 'dashboard') {
                     return (
@@ -565,9 +625,6 @@
                                     <div className="text-left">
                                         <h1 className="text-3xl font-black italic uppercase tracking-tighter leading-none">RutaFácil PRO</h1>
                                         <p className="text-xs font-bold opacity-80 uppercase tracking-widest mt-1">Gestión Centralizada</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setView('settings')} className="p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-all"><Settings size={24} /></button>
                                     </div>
                                 </div>
                                 <div className="bg-white/10 p-1.5 rounded-2xl shadow-inner flex w-full">
@@ -580,7 +637,6 @@
                                     <div className="h-full pb-32">
                                         <div className="flex justify-between items-center mb-6">
                                             <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Rutas Guardadas</h2>
-                                            <button onClick={() => openModal('createRoute', 'Nueva Ruta')} className="bg-blue-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all"><Plus size={18} /> Nueva</button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {(routes || []).map(route => (
@@ -589,7 +645,7 @@
                                                         <div className="bg-blue-50 p-3 rounded-2xl text-blue-600"><Folder size={24} /></div>
                                                         <div className="route-actions opacity-0 flex gap-1 transition-opacity">
                                                             <button onClick={(e) => { e.stopPropagation(); openModal('renameRoute', 'Renombrar Ruta', route.id); }} className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-100 hover:text-blue-600 transition-colors"><Edit2 size={16} /></button>
-                                                            <button onClick={(e) => { e.stopPropagation(); deleteRoute(id); }} className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-red-100 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
+                                                            <button onClick={(e) => { e.stopPropagation(); deleteRoute(route.id); }} className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-red-100 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
                                                         </div>
                                                     </div>
                                                     <div className="mt-4">
@@ -632,9 +688,7 @@
                                 </div>
                             </header>
                             <main className="main-scroll-area p-6 space-y-8 no-scrollbar pb-24">
-                                {/* CARD EXPANDIBLE DE BASE MAESTRA */}
                                 <section className={`bg-white rounded-[2.5rem] border-2 transition-all duration-300 shadow-sm overflow-hidden text-left ${isMasterSectionExpanded ? 'border-blue-400' : 'border-slate-100'}`}>
-                                    {/* Cabecera del Acordeón */}
                                     <div 
                                         className="p-6 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors"
                                         onClick={() => setIsMasterSectionExpanded(!isMasterSectionExpanded)}
@@ -651,7 +705,6 @@
                                         <ChevronDown size={24} className={`text-slate-300 transition-transform duration-300 ${isMasterSectionExpanded ? 'rotate-180' : ''}`} />
                                     </div>
 
-                                    {/* Contenido Expandible */}
                                     {isMasterSectionExpanded && (
                                         <div className="px-6 pb-6 animate-fade-in">
                                             <div className="flex flex-col sm:flex-row gap-4 mb-6 pt-4 border-t border-slate-50">
@@ -719,7 +772,6 @@
                                     )}
                                 </section>
 
-                                {/* SECCIÓN DE BACKUP Y RESTAURACIÓN (SIEMPRE VISIBLE) */}
                                 <section className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left pb-10">
                                     <div className="bg-blue-600 text-white p-8 rounded-[3rem] shadow-lg flex flex-col justify-between items-start">
                                         <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2"><Download size={24}/> Backup</h3>
@@ -757,7 +809,6 @@
                     );
                 }
 
-                // VISTA DETALLE DE RUTA
                 return (
                     <div className="flex flex-col h-full bg-slate-50 relative">
                         <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white px-6 pt-6 pb-5 shadow-lg rounded-b-[2.5rem] shrink-0 z-10 transition-colors`}>
@@ -770,7 +821,6 @@
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setIsManagerOpen(true)} className="bg-white text-blue-600 px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-black uppercase shadow-lg transition-all hover:bg-slate-100 active:scale-95"><Plus size={18} /> Añadir</button>
                                     <button onClick={() => { if(confirm("¿Reiniciar estados?")) updateRouteItems(activeItems.map(i=>({...i, status:'pending'}))) }} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all"><RotateCcw size={24} /></button>
                                 </div>
                             </div>
@@ -824,6 +874,7 @@
                 <div className="flex flex-col w-full h-full md:max-w-6xl mx-auto shadow-2xl overflow-hidden relative border-x border-slate-100 transition-all duration-500 bg-white">
                     <PromptModal />
                     {renderView()}
+                    <FAB />
                     <DataManager 
                         isOpen={isManagerOpen} 
                         onClose={() => setIsManagerOpen(false)} 

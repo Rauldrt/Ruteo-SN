@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RutaFácil PWA - Pro</title>
+    <title>RutaFácil PWA - Pro Responsiva</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -20,23 +20,29 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         button { user-select: none; -webkit-user-select: none; }
-        .leaflet-container { width: 100%; height: 100%; z-index: 0; }
+        .leaflet-container { width: 100%; height: 100%; z-index: 0; border-radius: 1rem; }
         .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 700; }
         
-        /* Centrado para pantallas grandes */
         body {
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
         }
+
+        /* Efecto de cristal para la barra de navegación */
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
     </style>
 </head>
 <body class="overflow-hidden">
     
-    <div id="root" class="w-full"></div>
+    <div id="root" class="w-full h-full flex justify-center"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -107,10 +113,7 @@
             const handleAddSingle = (e) => {
                 e.preventDefault();
                 const baseItem = { 
-                    name: newName, 
-                    address: newAddress, 
-                    phone: newPhone, 
-                    notes: newNotes, 
+                    name: newName, address: newAddress, phone: newPhone, notes: newNotes, 
                     mapLink: entryMode === 'link' ? newMapLink : '',
                     lat: entryMode === 'coords' ? parseFloat(newLat) : 0,
                     lng: entryMode === 'coords' ? parseFloat(newLng) : 0
@@ -128,234 +131,150 @@
                 const lines = csvText.split('\n');
                 const newItems = [];
                 const toMaster = [];
-                
                 lines.forEach((line, index) => {
                     if (!line.trim()) return;
                     let parts = line.includes('\t') ? line.split('\t') : line.includes(';') ? line.split(';') : line.split(',');
                     parts = parts.map(p => p ? p.trim().replace(/^"|"$/g, '') : '');
-                    
                     if (parts.length >= 3) {
                         const col3 = parts[2]; 
                         const isLink = col3.toLowerCase().startsWith('http');
                         const combinedCoordsMatch = col3.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-                        let item = { 
-                            id: Date.now() + index + Math.random(), 
-                            name: parts[0], 
-                            address: parts[1], 
-                            status: 'pending', 
-                            notes: parts[4] || '', 
-                            phone: parts[3] || '',
-                            mapLink: '',
-                            lat: 0,
-                            lng: 0
-                        };
-
-                        if (isLink) {
-                            item.mapLink = col3;
-                        } else if (combinedCoordsMatch) {
-                            item.lat = parseFloat(combinedCoordsMatch[1]);
-                            item.lng = parseFloat(combinedCoordsMatch[2]);
-                        } else {
-                            item.lat = parseFloat(col3);
-                            item.lng = parseFloat(parts[3] || 0);
-                            item.phone = parts[4] || '';
-                            item.notes = parts[5] || '';
-                        }
-                        
+                        let item = { id: Date.now() + index + Math.random(), name: parts[0], address: parts[1], status: 'pending', notes: parts[4] || '', phone: parts[3] || '', mapLink: '', lat: 0, lng: 0 };
+                        if (isLink) { item.mapLink = col3; } 
+                        else if (combinedCoordsMatch) { item.lat = parseFloat(combinedCoordsMatch[1]); item.lng = parseFloat(combinedCoordsMatch[2]); } 
+                        else { item.lat = parseFloat(col3); item.lng = parseFloat(parts[3] || 0); item.phone = parts[4] || ''; item.notes = parts[5] || ''; }
                         newItems.push(item);
-                        
                         if (saveInMaster) {
                             const isDuplicate = masterClients.some(c => c.name.toLowerCase() === item.name.toLowerCase() && c.address.toLowerCase() === item.address.toLowerCase());
                             if (!isDuplicate) toMaster.push({ ...item, masterId: Date.now() + index + Math.random() });
                         }
                     }
                 });
-
-                if (newItems.length > 0) {
-                    onImport(newItems);
-                    if (toMaster.length > 0) setMasterClients(prev => [...prev, ...toMaster]);
-                    setCsvText('');
-                    onClose();
-                    alert(`Éxito: ${newItems.length} clientes añadidos.`);
-                } else {
-                    alert("No se detectaron datos válidos.");
-                }
+                if (newItems.length > 0) { onImport(newItems); if (toMaster.length > 0) setMasterClients(prev => [...prev, ...toMaster]); setCsvText(''); onClose(); alert(`Éxito: ${newItems.length} clientes añadidos.`); } 
+                else { alert("No se detectaron datos válidos."); }
             };
 
-            const addMasterToRoute = (client) => {
-                onAdd({ ...client, id: Date.now(), status: 'pending' });
-                alert(`${client.name} añadido a la ruta.`);
-            };
+            const addMasterToRoute = (client) => { onAdd({ ...client, id: Date.now(), status: 'pending' }); alert(`${client.name} añadido.`); };
 
-            const deleteMasterClient = (masterId) => {
-                if(confirm("¿Eliminar de la base de datos permanente?")) {
-                    setMasterClients(prev => prev.filter(c => c.masterId !== masterId));
-                }
-            };
+            const deleteMasterClient = (masterId) => { if(confirm("¿Eliminar de la base de datos permanente?")) setMasterClients(prev => prev.filter(c => c.masterId !== masterId)); };
 
-            const filteredMaster = masterClients.filter(c => 
-                c.name.toLowerCase().includes(clientSearch.toLowerCase()) || 
-                c.address.toLowerCase().includes(clientSearch.toLowerCase())
-            );
+            const filteredMaster = masterClients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.address.toLowerCase().includes(clientSearch.toLowerCase()));
 
             return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md h-[85vh] sm:h-[80vh] flex flex-col overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b bg-slate-50">
-                            <h2 className="text-lg font-bold flex items-center gap-2"><Settings size={20} className="text-blue-600" /> Panel de Gestión</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={24} /></button>
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-2xl h-[90vh] sm:h-[80vh] flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center p-5 border-b bg-slate-50">
+                            <h2 className="text-xl font-black flex items-center gap-2 text-slate-800"><Settings size={22} className="text-blue-600" /> PANEL DE GESTIÓN</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={28} /></button>
                         </div>
-
-                        <div className="flex border-b text-[9px] uppercase tracking-wider font-bold text-slate-500 bg-white overflow-x-auto no-scrollbar">
-                            <button onClick={() => setActiveTab('clients')} className={`flex-1 py-3 px-2 whitespace-nowrap ${activeTab === 'clients' ? 'tab-active' : ''}`}>Base Clientes</button>
-                            <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 px-2 whitespace-nowrap ${activeTab === 'add' ? 'tab-active' : ''}`}>Nuevo</button>
-                            <button onClick={() => setActiveTab('bulk')} className={`flex-1 py-3 px-2 whitespace-nowrap ${activeTab === 'bulk' ? 'tab-active' : ''}`}>Importar Excel</button>
-                            <button onClick={() => setActiveTab('backup')} className={`flex-1 py-3 px-2 whitespace-nowrap ${activeTab === 'backup' ? 'tab-active' : ''}`}>Sistema</button>
+                        <div className="flex border-b text-[10px] sm:text-xs uppercase tracking-widest font-black text-slate-500 bg-white overflow-x-auto no-scrollbar">
+                            <button onClick={() => setActiveTab('clients')} className={`flex-1 py-4 px-2 whitespace-nowrap transition-all ${activeTab === 'clients' ? 'tab-active' : ''}`}>Base Clientes</button>
+                            <button onClick={() => setActiveTab('add')} className={`flex-1 py-4 px-2 whitespace-nowrap transition-all ${activeTab === 'add' ? 'tab-active' : ''}`}>Nuevo</button>
+                            <button onClick={() => setActiveTab('bulk')} className={`flex-1 py-4 px-2 whitespace-nowrap transition-all ${activeTab === 'bulk' ? 'tab-active' : ''}`}>Importar Excel</button>
+                            <button onClick={() => setActiveTab('backup')} className={`flex-1 py-4 px-2 whitespace-nowrap transition-all ${activeTab === 'backup' ? 'tab-active' : ''}`}>Sistema</button>
                         </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
                             {activeTab === 'clients' && (
                                 <div className="space-y-4">
                                     <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Buscar cliente guardado..." 
-                                            value={clientSearch}
-                                            onChange={(e) => setClientSearch(e.target.value)}
-                                            className="w-full pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none"
-                                        />
-                                        <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                        <input type="text" placeholder="Buscar cliente guardado..." value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500" />
+                                        <Search className="absolute left-4 top-4 text-slate-400" size={20} />
                                     </div>
-                                    {filteredMaster.length === 0 ? (
-                                        <div className="text-center py-10 text-slate-400">
-                                            <Users size={48} className="mx-auto mb-3 opacity-20" />
-                                            <p className="text-sm">No hay clientes guardados.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 pb-10">
-                                            {filteredMaster.map(client => (
-                                                <div key={client.masterId} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                                                    <div className="flex-1 min-w-0 mr-2">
-                                                        <h4 className="font-bold text-slate-800 text-sm truncate">{client.name}</h4>
-                                                        <p className="text-[10px] text-slate-500 truncate">{client.address}</p>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => addMasterToRoute(client)} className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Plus size={18} /></button>
-                                                        <button onClick={() => deleteMasterClient(client.masterId)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
-                                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-10">
+                                        {filteredMaster.length === 0 ? (
+                                            <div className="col-span-full text-center py-10 text-slate-400"><Users size={48} className="mx-auto mb-3 opacity-20" /><p className="text-sm">No hay clientes guardados.</p></div>
+                                        ) : filteredMaster.map(client => (
+                                            <div key={client.masterId} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-blue-200 transition-all">
+                                                <div className="flex-1 min-w-0 mr-2">
+                                                    <h4 className="font-bold text-slate-800 text-sm truncate uppercase tracking-tight">{client.name}</h4>
+                                                    <p className="text-[10px] text-slate-500 truncate">{client.address}</p>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => addMasterToRoute(client)} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Plus size={20} /></button>
+                                                    <button onClick={() => deleteMasterClient(client.masterId)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={20} /></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
-
+                            {/* Resto de pestañas optimizadas para visualización amplia */}
                             {activeTab === 'add' && (
-                                <form onSubmit={handleAddSingle} className="space-y-4">
-                                    <div className="flex gap-2 p-1 bg-slate-200 rounded-xl">
-                                        <button type="button" onClick={() => setEntryMode('link')} className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition ${entryMode === 'link' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Link Maps</button>
-                                        <button type="button" onClick={() => setEntryMode('coords')} className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition ${entryMode === 'coords' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Coordenadas</button>
+                                <form onSubmit={handleAddSingle} className="max-w-lg mx-auto space-y-4">
+                                    <div className="flex gap-2 p-1 bg-slate-200 rounded-2xl">
+                                        <button type="button" onClick={() => setEntryMode('link')} className={`flex-1 py-3 text-[11px] font-black rounded-xl transition-all ${entryMode === 'link' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>LINK GOOGLE MAPS</button>
+                                        <button type="button" onClick={() => setEntryMode('coords')} className={`flex-1 py-3 text-[11px] font-black rounded-xl transition-all ${entryMode === 'coords' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>COORDENADAS</button>
                                     </div>
-                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-                                        <input required value={newName} onChange={e => setNewName(e.target.value)} className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm" placeholder="Nombre del Cliente" />
-                                        <input required value={newAddress} onChange={e => setNewAddress(e.target.value)} className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm" placeholder="Dirección" />
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <input required value={newName} onChange={e => setNewName(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Nombre" />
+                                            <input required value={newAddress} onChange={e => setNewAddress(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Dirección" />
+                                        </div>
                                         {entryMode === 'link' ? (
-                                            <input required value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-3 bg-blue-50 text-blue-700 border-none rounded-xl text-sm" placeholder="Pegar Link de Maps" />
+                                            <input required value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Pegar Link" />
                                         ) : (
-                                            <div className="flex gap-2">
-                                                <input required type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-3 bg-blue-50 text-blue-700 border-none rounded-xl text-sm" placeholder="Latitud" />
-                                                <input required type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-3 bg-blue-50 text-blue-700 border-none rounded-xl text-sm" placeholder="Longitud" />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <input required type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Lat" />
+                                                <input required type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Lng" />
                                             </div>
                                         )}
-                                        <input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm" placeholder="Teléfono" />
-                                        <input value={newNotes} onChange={e => setNewNotes(e.target.value)} className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm" placeholder="Notas" />
-                                        <div className="flex items-center gap-2 pt-2">
-                                            <input type="checkbox" id="masterCheck" checked={saveInMaster} onChange={(e) => setSaveInMaster(e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
-                                            <label htmlFor="masterCheck" className="text-xs font-bold text-slate-600">Guardar en Base de Datos</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Teléfono" />
+                                            <input value={newNotes} onChange={e => setNewNotes(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Notas" />
                                         </div>
-                                        <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 mt-2">AGREGAR A RUTA</button>
+                                        <div className="flex items-center gap-3 pt-2">
+                                            <input type="checkbox" id="masterCheck" checked={saveInMaster} onChange={(e) => setSaveInMaster(e.target.checked)} className="w-5 h-5 rounded-lg text-blue-600" />
+                                            <label htmlFor="masterCheck" className="text-sm font-bold text-slate-600 select-none">Guardar permanentemente</label>
+                                        </div>
+                                        <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-blue-200 mt-4 active:scale-[0.98] transition-all">AÑADIR A RUTA</button>
                                     </div>
                                 </form>
                             )}
-
                             {activeTab === 'bulk' && (
-                                <div className="space-y-4">
-                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex gap-3">
-                                        <FileSpreadsheet size={24} className="text-blue-500 flex-shrink-0" />
-                                        <div className="text-[10px] text-blue-800 leading-tight">
-                                            <p className="font-bold mb-1">Formato admitido (Columnas de Excel):</p>
-                                            <p>1. Nombre | 2. Dirección | 3. Link o Lat | 4. Lng (si usó Lat) o Tel | 5. Notas</p>
+                                <div className="max-w-2xl mx-auto space-y-4">
+                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-4">
+                                        <FileSpreadsheet size={32} className="text-blue-500 flex-shrink-0" />
+                                        <div className="text-[11px] text-blue-900 leading-tight">
+                                            <p className="font-black mb-1 uppercase tracking-wider">Formato de Excel:</p>
+                                            <p className="opacity-80">1. Nombre | 2. Dirección | 3. Link/Lat | 4. Lng/Tel | 5. Notas</p>
                                         </div>
                                     </div>
-                                    <textarea 
-                                        value={csvText} 
-                                        onChange={e => setCsvText(e.target.value)} 
-                                        className="w-full h-48 p-3 bg-white border border-slate-200 rounded-xl text-[10px] font-mono outline-none" 
-                                        placeholder="Pega aquí las filas de tu Excel..."
-                                    />
-                                    <div className="flex items-center gap-2 px-1">
-                                        <input type="checkbox" id="bulkMaster" checked={saveInMaster} onChange={(e) => setSaveInMaster(e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
-                                        <label htmlFor="bulkMaster" className="text-xs font-bold text-slate-600">Guardar nuevos en Base de Datos</label>
-                                    </div>
-                                    <button onClick={handleBulkImport} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-green-100">IMPORTAR</button>
+                                    <textarea value={csvText} onChange={e => setCsvText(e.target.value)} className="w-full h-48 p-4 bg-white border border-slate-200 rounded-3xl text-[11px] font-mono outline-none shadow-inner" placeholder="Pega aquí las filas de tu planilla..." />
+                                    <button onClick={handleBulkImport} className="w-full bg-green-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-green-100 transition-all hover:brightness-110">IMPORTAR DATOS</button>
                                 </div>
                             )}
-
                             {activeTab === 'backup' && (
-                                <div className="space-y-4">
-                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                                        <h3 className="font-bold text-slate-800 text-sm text-center">Respaldo Completo</h3>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button onClick={() => {
-                                                const bundle = { route: data, master: masterClients };
-                                                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle));
-                                                const link = document.createElement('a');
-                                                link.setAttribute("href", dataStr);
-                                                link.setAttribute("download", `backup_rutafacil_${new Date().toISOString().slice(0,10)}.json`);
-                                                link.click();
-                                            }} className="bg-slate-800 text-white p-3 rounded-xl font-bold flex flex-col items-center gap-1 text-[10px]">
-                                                <Download size={20} /> DESCARGAR JSON
-                                            </button>
-                                            <button onClick={async () => {
-                                                const bundle = { route: data, master: masterClients };
-                                                const msg = `BACKUP RUTA FÁCIL\nClientes: ${masterClients.length}\nEntregas: ${data.length}\n\nDatos:\n${JSON.stringify(bundle).substring(0, 3000)}`;
-                                                if(navigator.share) await navigator.share({ title: 'RutaFacil Backup', text: msg });
-                                                else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                                            }} className="bg-green-600 text-white p-3 rounded-xl font-bold flex flex-col items-center gap-1 text-[10px]">
-                                                <Share size={20} /> WHATSAPP
-                                            </button>
-                                        </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 text-center">
+                                        <h3 className="font-black text-slate-800 text-lg">Respaldo</h3>
+                                        <button onClick={() => {
+                                            const bundle = { route: data, master: masterClients };
+                                            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle));
+                                            const link = document.createElement('a');
+                                            link.setAttribute("href", dataStr);
+                                            link.setAttribute("download", `backup_rutafacil.json`);
+                                            link.click();
+                                        }} className="w-full bg-slate-800 text-white p-4 rounded-2xl font-black flex items-center justify-center gap-2"><Download size={22} /> DESCARGAR JSON</button>
+                                        <button onClick={async () => {
+                                            const bundle = { route: data, master: masterClients };
+                                            const msg = `BACKUP RUTA\nClientes: ${masterClients.length}\nEntregas: ${data.length}\n\nDatos:\n${JSON.stringify(bundle).substring(0, 3000)}`;
+                                            if(navigator.share) await navigator.share({ title: 'RutaFacil', text: msg });
+                                            else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                                        }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black flex items-center justify-center gap-2"><Share size={22} /> WHATSAPP</button>
                                     </div>
-
-                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                                        <h3 className="font-bold text-slate-800 text-sm text-center">Restaurar</h3>
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 text-center">
+                                        <h3 className="font-black text-slate-800 text-lg">Restaurar</h3>
                                         <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={(e) => {
                                             const reader = new FileReader();
                                             reader.readAsText(e.target.files[0]);
                                             reader.onload = (event) => {
                                                 try {
                                                     const res = JSON.parse(event.target.result);
-                                                    if(res.master && Array.isArray(res.master)) {
-                                                        if(confirm(`Se restaurarán ${res.master.length} clientes. ¿Continuar?`)) {
-                                                            setMasterClients(res.master);
-                                                            if(res.route) onImport(res.route);
-                                                            alert("Restaurado.");
-                                                        }
-                                                    }
+                                                    if(res.master) { setMasterClients(res.master); if(res.route) onImport(res.route); alert("Restaurado."); }
                                                 } catch(err) { alert("Error."); }
                                             };
                                         }} />
-                                        <button onClick={() => fileInputRef.current.click()} className="w-full bg-orange-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-sm">
-                                            <Upload size={18} /> SUBIR ARCHIVO
-                                        </button>
-                                    </div>
-
-                                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100 space-y-3">
-                                        <h3 className="font-bold text-red-800 text-sm text-center">Zona de Peligro</h3>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button onClick={() => { if(confirm("¿Limpiar hoy?")) onClear(); }} className="bg-white border border-red-200 text-red-600 p-2 rounded-lg text-[10px] font-bold">LIMPIAR HOY</button>
-                                            <button onClick={() => { if(confirm("¿Borrar BASE DE DATOS?")) setMasterClients([]); }} className="bg-white border border-red-200 text-red-600 p-2 rounded-lg text-[10px] font-bold">LIMPIAR BASE</button>
-                                        </div>
+                                        <button onClick={() => fileInputRef.current.click()} className="w-full h-full min-h-[120px] bg-orange-500 text-white py-3 rounded-3xl font-black flex flex-col items-center justify-center gap-3"><Upload size={32} /> SUBIR BACKUP</button>
                                     </div>
                                 </div>
                             )}
@@ -365,14 +284,13 @@
             );
         };
 
-        // --- COMPONENTE TARJETA DRAGGABLE (RUTA ACTUAL) ---
         const DeliveryCard = ({ item, index, onNavigate, onStatusChange, onCall, onDelete, onDragStart, onDragEnter, onDragEnd }) => {
             const [isOpen, setIsOpen] = useState(false);
             const isPending = item.status === 'pending';
 
             return (
                 <div 
-                    className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all group ${!isPending ? 'opacity-60 bg-slate-50' : ''}`}
+                    className={`bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all group ${!isPending ? 'opacity-50 grayscale bg-slate-100 border-transparent' : 'border-slate-100 hover:border-blue-200 hover:shadow-md'}`}
                     draggable={isPending}
                     onDragStart={(e) => isPending && onDragStart(e, index)}
                     onDragEnter={(e) => isPending && onDragEnter(e, index)}
@@ -381,62 +299,43 @@
                 >
                     <div className="flex items-stretch">
                         {isPending && (
-                            <div className="w-8 bg-slate-50 border-r border-slate-100 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none text-slate-300 hover:text-blue-500 hover:bg-slate-100 transition-colors">
-                                <GripVertical size={16} />
+                            <div className="w-10 bg-slate-50 border-r border-slate-100 flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:text-blue-500 transition-colors">
+                                <GripVertical size={20} />
                             </div>
                         )}
-
-                        <div 
-                            className="flex-1 p-3 flex items-center justify-between cursor-pointer active:bg-slate-50 select-none"
-                            onClick={() => setIsOpen(!isOpen)}
-                        >
-                            <div className="flex-1 min-w-0 pr-2">
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`font-bold text-slate-800 text-sm truncate ${!isPending && 'line-through decoration-slate-400'}`}>
-                                        {item.name}
-                                    </h3>
-                                    {!isPending && (
-                                        item.status === 'delivered' 
-                                        ? <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                                        : <XCircle size={16} className="text-red-600 flex-shrink-0" />
-                                    )}
+                        <div className="flex-1 p-4 flex items-center justify-between cursor-pointer active:bg-slate-50" onClick={() => setIsOpen(!isOpen)}>
+                            <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-3">
+                                    <h3 className={`font-black text-slate-800 text-sm sm:text-base truncate uppercase tracking-tight ${!isPending && 'line-through'}`}>{item.name}</h3>
+                                    {!isPending && (item.status === 'delivered' ? <CheckCircle size={20} className="text-green-600" /> : <XCircle size={20} className="text-red-600" />)}
                                 </div>
-                                <div className="flex items-center text-slate-500 text-[10px] mt-1">
-                                    {item.mapLink ? <LinkIcon size={12} className="mr-1 text-orange-500 flex-shrink-0"/> : <MapPin size={12} className="mr-1 text-blue-500 flex-shrink-0"/>}
+                                <div className="flex items-center text-slate-500 text-[11px] sm:text-xs mt-1">
+                                    {item.mapLink ? <LinkIcon size={14} className="mr-1.5 text-orange-500" /> : <MapPin size={14} className="mr-1.5 text-blue-500" />}
                                     <span className="truncate">{item.address}</span>
                                 </div>
                             </div>
-                            <button className="text-slate-400 p-1">
-                                {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                            </button>
+                            <button className="text-slate-400"><ChevronDown size={24} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} /></button>
                         </div>
                     </div>
-
                     {isOpen && (
-                        <div className={`px-4 pb-4 pt-1 border-t border-slate-100 bg-white ${isPending ? 'ml-8' : ''}`}>
-                            {item.notes && (
-                                <div className="mt-2 text-[11px] p-3 bg-blue-50 text-blue-800 rounded-xl border border-blue-100 mb-4 leading-relaxed italic">
-                                    "{item.notes}"
-                                </div>
-                            )}
-                            <div className="flex items-center justify-between gap-2">
+                        <div className={`px-5 pb-5 pt-1 bg-white ${isPending ? 'ml-10' : ''}`}>
+                            {item.notes && <div className="mt-2 text-[11px] sm:text-xs p-4 bg-blue-50 text-blue-900 rounded-2xl border border-blue-100 mb-5 leading-relaxed italic">"{item.notes}"</div>}
+                            <div className="flex items-center justify-between gap-3">
                                 {isPending ? (
                                     <>
-                                        <div className="flex gap-2">
-                                            <button onClick={(e) => { e.stopPropagation(); onNavigate(item); }} className="bg-blue-600 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all">
-                                                {item.mapLink ? <LinkIcon size={24} /> : <Navigation size={24} />}
-                                            </button>
-                                            {item.phone && <button onClick={(e) => { e.stopPropagation(); onCall(item.phone); }} className="bg-slate-100 text-slate-600 border border-slate-200 w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-all"><Phone size={24} /></button>}
+                                        <div className="flex gap-3">
+                                            <button onClick={(e) => { e.stopPropagation(); onNavigate(item); }} className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all">{item.mapLink ? <LinkIcon size={28} /> : <Navigation size={28} />}</button>
+                                            {item.phone && <button onClick={(e) => { e.stopPropagation(); onCall(item.phone); }} className="bg-slate-100 text-slate-600 border border-slate-200 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all"><Phone size={28} /></button>}
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'failed'); }} className="bg-white text-red-500 w-12 h-12 rounded-xl flex items-center justify-center border border-red-200 active:scale-95 transition-all"><XCircle size={28} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'delivered'); }} className="bg-green-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all"><CheckCircle size={28} /></button>
+                                        <div className="flex gap-3">
+                                            <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'failed'); }} className="bg-white text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-red-100 active:scale-90 transition-all"><XCircle size={32} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'delivered'); }} className="bg-green-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"><CheckCircle size={32} /></button>
                                         </div>
                                     </>
                                 ) : (
                                     <div className="flex justify-between w-full items-center">
-                                        <button onClick={(e) => { e.stopPropagation(); if(confirm('¿Borrar?')) onDelete(item.id); }} className="text-red-400 p-2 rounded-lg"><Trash2 size={20} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'pending'); }} className="text-slate-500 text-[10px] font-bold flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-full">DESHACER</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if(confirm('¿Eliminar?')) onDelete(item.id); }} className="text-red-400 p-2 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={24} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); onStatusChange(item.id, 'pending'); }} className="text-slate-700 text-[10px] font-black uppercase tracking-widest px-5 py-3 bg-slate-200 rounded-full active:scale-95 transition-all">REHACER</button>
                                     </div>
                                 )}
                             </div>
@@ -446,22 +345,18 @@
             );
         };
 
-        // --- COMPONENTE MAPA ---
         const SimpleMap = ({ deliveries, onSelect }) => {
             const mapContainerRef = useRef(null);
             const mapInstanceRef = useRef(null);
-
             useEffect(() => {
-                if (!mapContainerRef.current) return;
-                if (mapInstanceRef.current) return; 
+                if (!mapContainerRef.current || mapInstanceRef.current) return; 
                 try {
                     const map = L.map(mapContainerRef.current).setView([-34.6037, -58.3816], 12);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSW' }).addTo(map);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                     mapInstanceRef.current = map;
-                    setTimeout(() => map.invalidateSize(), 300);
+                    setTimeout(() => map.invalidateSize(), 500);
                 } catch (error) { console.error(error); }
             }, []);
-
             useEffect(() => {
                 const map = mapInstanceRef.current;
                 if (!map) return;
@@ -475,27 +370,19 @@
                         if (delivery.lat) { bounds.extend([delivery.lat, delivery.lng]); hasPoints = true; }
                     }
                 });
-                if (hasPoints) map.fitBounds(bounds, { padding: [40, 40] });
+                if (hasPoints) map.fitBounds(bounds, { padding: [60, 60] });
             }, [deliveries]);
-
-            return <div ref={mapContainerRef} className="h-full w-full rounded-b-2xl shadow-inner bg-slate-200"></div>;
+            return <div ref={mapContainerRef} className="h-full w-full shadow-inner bg-slate-200"></div>;
         };
 
-        // --- APLICACIÓN PRINCIPAL ---
         const App = () => {
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [isManagerOpen, setIsManagerOpen] = useState(false);
             const [view, setView] = useState('list'); 
             const [filter, setFilter] = useState('all'); 
             const [searchTerm, setSearchTerm] = useState('');
-            const [deliveries, setDeliveries] = useState(() => {
-                const saved = localStorage.getItem('rutafacil_data');
-                return saved ? JSON.parse(saved) : [];
-            });
-            const [masterClients, setMasterClients] = useState(() => {
-                const saved = localStorage.getItem('rutafacil_master');
-                return saved ? JSON.parse(saved) : [];
-            });
+            const [deliveries, setDeliveries] = useState(() => JSON.parse(localStorage.getItem('rutafacil_data')) || []);
+            const [masterClients, setMasterClients] = useState(() => JSON.parse(localStorage.getItem('rutafacil_master')) || []);
             const dragItem = useRef(null);
             const dragOverItem = useRef(null);
 
@@ -532,68 +419,83 @@
             };
 
             const progress = deliveries.length === 0 ? 0 : Math.round((deliveries.filter(d => d.status === 'delivered').length / deliveries.length) * 100);
-            const pendingCount = deliveries.filter(d => d.status === 'pending').length;
 
             return (
-                <div className="flex flex-col h-screen bg-white font-sans text-slate-800 max-w-3xl mx-auto shadow-2xl overflow-hidden relative border-x border-slate-100 transition-all duration-300">
-                    <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white px-4 pt-4 pb-3 shadow-md rounded-b-3xl z-10`}>
-                        <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2.5 rounded-xl"><Package size={22} /></div>
+                <div className="flex flex-col h-screen bg-white font-sans text-slate-800 w-full md:max-w-4xl lg:max-w-6xl mx-auto shadow-2xl overflow-hidden relative border-x border-slate-100 transition-all duration-500">
+                    <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white px-6 pt-6 pb-5 shadow-lg rounded-b-[2.5rem] z-10 transition-colors`}>
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md"><Package size={26} /></div>
                                 <div>
-                                    <h1 className="text-xl font-black tracking-tight leading-none">RutaFácil</h1>
-                                    <p className="text-[10px] font-bold mt-1 opacity-80 uppercase">{isOnline ? 'Conectado' : 'Sin Internet'}</p>
+                                    <h1 className="text-2xl font-black tracking-tight leading-none uppercase italic">RutaFácil</h1>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
+                                        <p className="text-[10px] font-black tracking-widest opacity-80 uppercase">{isOnline ? 'CONECTADO' : 'MODO OFFLINE'}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => setIsManagerOpen(true)} className="p-2.5 bg-white/10 rounded-xl relative">
-                                    <Database size={20} />
-                                    {masterClients.length > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-blue-600">{masterClients.length}</span>}
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsManagerOpen(true)} className="p-3 bg-white/10 rounded-2xl relative transition-all hover:bg-white/20 active:scale-95">
+                                    <Database size={24} />
+                                    {masterClients.length > 0 && <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-[9px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-blue-600 font-bold">{masterClients.length}</span>}
                                 </button>
-                                <button onClick={() => {if(confirm("Reiniciar?")) setDeliveries(p=>p.map(d=>({...d, status:'pending'})))}} className="p-2.5 bg-white/10 rounded-xl"><RotateCcw size={20} /></button>
+                                <button onClick={() => {if(confirm("¿Reiniciar ruta?")) setDeliveries(p=>p.map(d=>({...d, status:'pending'})))}} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all active:scale-95"><RotateCcw size={24} /></button>
                             </div>
                         </div>
-                        <div className="bg-white/10 rounded-full h-1.5 overflow-hidden flex mb-2">
-                            <div className="bg-green-400 h-full transition-all duration-700" style={{ width: `${progress}%` }}></div>
+                        <div className="bg-white/10 rounded-full h-2 overflow-hidden flex mb-2.5">
+                            <div className="bg-green-400 h-full transition-all duration-1000 ease-in-out" style={{ width: `${progress}%` }}></div>
                         </div>
-                        <div className="flex justify-between text-[10px] font-black uppercase">
-                            <span>Progreso: {progress}%</span>
-                            <span>{pendingCount} Pendientes</span>
+                        <div className="flex justify-between text-[10px] font-black tracking-widest uppercase px-1">
+                            <span>PROGRESO: {progress}%</span>
+                            <span>{deliveries.filter(d => d.status === 'pending').length} PENDIENTES</span>
                         </div>
                     </header>
-                    <div className="px-4 py-3 space-y-3">
-                        <div className="flex gap-2 items-center">
-                            <div className="flex bg-slate-200 p-1 rounded-xl">
-                                <button onClick={() => setView('list')} className={`p-2 rounded-lg ${view === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}><List size={20} /></button>
-                                <button onClick={() => setView('map')} className={`p-2 rounded-lg ${view === 'map' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}><MapIcon size={20} /></button>
+
+                    <div className="px-6 py-4 space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                            <div className="flex bg-slate-200 p-1.5 rounded-2xl shadow-inner w-full sm:w-auto">
+                                <button onClick={() => setView('list')} className={`flex-1 sm:flex-none px-6 py-2 rounded-xl transition-all font-black text-xs ${view === 'list' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}>LISTA</button>
+                                <button onClick={() => setView('map')} className={`flex-1 sm:flex-none px-6 py-2 rounded-xl transition-all font-black text-xs ${view === 'map' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}>MAPA</button>
                             </div>
-                            <div className="relative flex-1">
-                                <input type="text" placeholder="Buscar en ruta hoy..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none" />
-                                <Search className="absolute left-3 top-3 text-slate-400" size={16} />
+                            <div className="relative flex-1 w-full">
+                                <input type="text" placeholder="Buscar en la ruta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm outline-none focus:border-blue-400 focus:bg-white transition-all shadow-sm" />
+                                <Search className="absolute left-4 top-4 text-slate-400" size={20} />
                             </div>
                         </div>
                     </div>
-                    <main className="flex-1 overflow-hidden px-4 pb-4">
-                        {view === 'map' ? <SimpleMap deliveries={deliveries} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} /> : (
-                            <div className="h-full overflow-y-auto space-y-3 pr-1 pb-24">
-                                <div className="flex gap-2 mb-2 sticky top-0 bg-white/80 backdrop-blur-md py-1 z-10">
+
+                    <main className="flex-1 overflow-hidden px-6 pb-6">
+                        {view === 'map' ? (
+                            <div className="h-full rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-lg"><SimpleMap deliveries={deliveries} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} /></div>
+                        ) : (
+                            <div className="h-full overflow-y-auto space-y-4 pr-1 pb-24 no-scrollbar">
+                                <div className="flex gap-2 mb-4 sticky top-0 glass py-2 z-10 rounded-xl">
                                     {['all', 'pending', 'completed'].map(f => (
-                                        <button key={f} onClick={() => setFilter(f)} className={`flex-1 py-1.5 rounded-full text-[9px] font-bold border ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white'}`}>
+                                        <button key={f} onClick={() => setFilter(f)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black tracking-wider transition-all border-2 ${filter === f ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100' : 'bg-white border-slate-100 text-slate-500'}`}>
                                             {f === 'all' ? 'TODOS' : f === 'pending' ? 'PENDIENTES' : 'LISTOS'}
                                         </button>
                                     ))}
                                 </div>
                                 {filteredDeliveries.length === 0 ? (
-                                    <div className="text-center py-20 text-slate-400 bg-slate-50 rounded-3xl border border-dashed border-slate-300">
-                                        <p className="text-sm">No hay registros hoy</p>
+                                    <div className="text-center py-32 text-slate-300 bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100">
+                                        <Package size={64} className="mx-auto mb-4 opacity-20" />
+                                        <p className="font-black text-lg uppercase">Sin registros hoy</p>
                                     </div>
                                 ) : (
-                                    filteredDeliveries.map((item, index) => (
-                                        <DeliveryCard key={item.id} index={index} item={item} onNavigate={(i) => {
-                                            if(i.mapLink) window.open(i.mapLink, '_blank');
-                                            else window.open(`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`, '_blank');
-                                        }} onStatusChange={(id, s) => setDeliveries(p => p.map(d => d.id === id ? { ...d, status: s } : d))} onDelete={(id) => setDeliveries(p => p.filter(d => d.id !== id))} onCall={(ph) => window.open(`tel:${ph}`, '_self')} onDragStart={(e, pos) => {dragItem.current=pos}} onDragEnter={(e, pos) => {dragOverItem.current=pos}} onDragEnd={handleDragEnd} />
-                                    ))
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {filteredDeliveries.map((item, index) => (
+                                            <DeliveryCard 
+                                                key={item.id} index={index} item={item} 
+                                                onNavigate={(i) => i.mapLink ? window.open(i.mapLink, '_blank') : window.open(`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`, '_blank')} 
+                                                onStatusChange={(id, s) => setDeliveries(p => p.map(d => d.id === id ? { ...d, status: s } : d))} 
+                                                onDelete={(id) => setDeliveries(p => p.filter(d => d.id !== id))} 
+                                                onCall={(ph) => window.open(`tel:${ph}`, '_self')} 
+                                                onDragStart={(e, pos) => {dragItem.current=pos}} 
+                                                onDragEnter={(e, pos) => {dragOverItem.current=pos}} 
+                                                onDragEnd={handleDragEnd} 
+                                            />
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -601,12 +503,18 @@
                     
                     <button 
                         onClick={() => setIsManagerOpen(true)} 
-                        className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-20"
+                        className="absolute bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center active:scale-90 hover:rotate-90 transition-all z-20 shadow-blue-200"
                     >
-                        <Plus size={32} />
+                        <Plus size={36} />
                     </button>
 
-                    <DataManager isOpen={isManagerOpen} onClose={() => setIsManagerOpen(false)} onImport={(d) => setDeliveries(prev => [...prev, ...d])} onAdd={(d) => setDeliveries(prev => [...prev, d])} onClear={() => setDeliveries([])} data={deliveries} masterClients={masterClients} setMasterClients={setMasterClients} />
+                    <DataManager 
+                        isOpen={isManagerOpen} onClose={() => setIsManagerOpen(false)} 
+                        onImport={(d) => setDeliveries(prev => [...prev, ...d])} 
+                        onAdd={(d) => setDeliveries(prev => [...prev, d])} 
+                        onClear={() => setDeliveries([])} 
+                        data={deliveries} masterClients={masterClients} setMasterClients={setMasterClients} 
+                    />
                 </div>
             );
         };

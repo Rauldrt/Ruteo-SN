@@ -38,7 +38,7 @@
     <div id="root"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
         // --- ICONOS INLINE ---
         const IconBase = ({ size = 24, color = "currentColor", className = "", children, ...props }) => (
@@ -268,6 +268,13 @@
 
             const activeRoute = useMemo(() => routes.find(r => String(r.id) === String(activeRouteId)), [routes, activeRouteId]);
             const activeItems = useMemo(() => activeRoute ? activeRoute.items : [], [activeRoute]);
+
+            // Cálculo seguro de progreso
+            const progress = useMemo(() => {
+                if (!activeItems || activeItems.length === 0) return 0;
+                const completedCount = activeItems.filter(i => i.status !== 'pending').length;
+                return Math.round((completedCount / activeItems.length) * 100);
+            }, [activeItems]);
 
             const filteredItems = useMemo(() => {
                 return (activeItems || []).filter(it => {

@@ -17,90 +17,26 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        :root {
-            --app-height: 100%;
-        }
-        
-        html, body {
-            height: 100dvh;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #f1f5f9;
-        }
-
-        #root {
-            height: 100dvh;
-            width: 100%;
-        }
-
+        :root { --app-height: 100%; }
+        html, body { height: 100dvh; width: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f1f5f9; }
+        #root { height: 100dvh; width: 100%; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         button { user-select: none; -webkit-user-select: none; }
-        
-        .leaflet-container { 
-            width: 100%; 
-            height: 100%; 
-            z-index: 0; 
-            border-radius: 1.5rem; 
-        }
-        
-        .tab-active { 
-            border-bottom: 3px solid #2563eb; 
-            color: #2563eb; 
-            font-weight: 700; 
-        }
-
+        .leaflet-container { width: 100%; height: 100%; z-index: 0; border-radius: 1.5rem; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 700; }
         .route-card:hover .route-actions { opacity: 1; }
         @media (max-width: 640px) { .route-actions { opacity: 1; } }
-
-        .client-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-
-        .modal-overlay {
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        
-        .main-scroll-area {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .expandable-section {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* FAB Animation */
-        .fab-menu-enter {
-            transform: scale(0.8) translateY(20px);
-            opacity: 0;
-        }
-        .fab-menu-active {
-            transform: scale(1) translateY(0);
-            opacity: 1;
-            transition: all 0.2s ease-out;
-        }
+        .main-scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>
-    
     <div id="root"></div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
@@ -108,7 +44,6 @@
         const IconBase = ({ size = 24, color = "currentColor", className = "", children, ...props }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
         );
-
         const MapPin = (props) => <IconBase {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></IconBase>;
         const Navigation = (props) => <IconBase {...props}><polygon points="3 11 22 2 13 21 11 13 3 11" /></IconBase>;
         const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></IconBase>;
@@ -131,17 +66,14 @@
         const Share = (props) => <IconBase {...props}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>;
         const Upload = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></IconBase>;
-        const FileSpreadsheet = (props) => <IconBase {...props}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0-2 2h4"/><path d="M8 13h8"/><path d="M8 17h8"/></IconBase>;
         const X = (props) => <IconBase {...props}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></IconBase>;
 
-        // --- COMPONENTE GESTIÓN DE DATOS (MODAL) ---
+        // --- COMPONENTE GESTIÓN DE DATOS ---
         const DataManager = ({ isOpen, onClose, onAdd, onUpdate, initialData, masterClients, setMasterClients, view }) => {
             const [activeTab, setActiveTab] = useState('clients'); 
-            const [csvText, setCsvText] = useState('');
             const [entryMode, setEntryMode] = useState('link');
             const [saveInMaster, setSaveInMaster] = useState(true);
             const [clientSearch, setClientSearch] = useState('');
-
             const [newName, setNewName] = useState('');
             const [newAddress, setNewAddress] = useState('');
             const [newPhone, setNewPhone] = useState('');
@@ -153,20 +85,15 @@
             useEffect(() => {
                 if (isOpen) {
                     if (initialData) {
-                        setNewName(initialData.name || '');
-                        setNewAddress(initialData.address || '');
-                        setNewPhone(initialData.phone || '');
-                        setNewNotes(initialData.notes || '');
-                        setNewMapLink(initialData.mapLink || '');
-                        setNewLat(initialData.lat || '');
-                        setNewLng(initialData.lng || '');
-                        setEntryMode(initialData.lat ? 'coords' : 'link');
-                        setActiveTab('add'); 
+                        setNewName(initialData.name || ''); setNewAddress(initialData.address || '');
+                        setNewPhone(initialData.phone || ''); setNewNotes(initialData.notes || '');
+                        setNewMapLink(initialData.mapLink || ''); setNewLat(initialData.lat || '');
+                        setNewLng(initialData.lng || ''); setEntryMode(initialData.lat ? 'coords' : 'link');
+                        setActiveTab('add');
                     } else {
-                        setNewName(''); setNewAddress(''); setNewPhone(''); setNewNotes(''); setNewMapLink(''); setNewLat(''); setNewLng('');
-                        setEntryMode('link');
-                        if (view === 'settings') setActiveTab('add');
-                        else setActiveTab('clients');
+                        setNewName(''); setNewAddress(''); setNewPhone(''); setNewNotes(''); setNewMapLink('');
+                        setNewLat(''); setNewLng(''); setEntryMode('link');
+                        setActiveTab(view === 'settings' ? 'add' : 'clients');
                     }
                 }
             }, [isOpen, initialData, view]);
@@ -175,96 +102,46 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                const updatedItem = { 
+                const itemData = { 
                     ...initialData,
-                    name: newName, 
-                    address: newAddress || newName, 
-                    phone: newPhone, 
-                    notes: newNotes, 
+                    name: newName, address: newAddress || newName, phone: newPhone, notes: newNotes, 
                     mapLink: entryMode === 'link' ? newMapLink : '',
                     lat: entryMode === 'coords' ? parseFloat(newLat || 0) : 0,
                     lng: entryMode === 'coords' ? parseFloat(newLng || 0) : 0
                 };
-                
-                if (initialData) onUpdate(updatedItem);
+                if (initialData) onUpdate(itemData);
                 else {
-                    onAdd({ ...updatedItem, id: Date.now() + Math.random(), status: 'pending' });
+                    onAdd({ ...itemData, id: Date.now() + Math.random(), status: 'pending' });
                     if (saveInMaster || view === 'settings') {
-                        const isDuplicate = masterClients.some(c => c.name.toLowerCase() === newName.toLowerCase());
-                        if (!isDuplicate) setMasterClients(prev => [{ ...updatedItem, masterId: Date.now() + Math.random() }, ...prev]);
+                        if (!masterClients.some(c => c.name.toLowerCase() === newName.toLowerCase())) {
+                            setMasterClients(prev => [{ ...itemData, masterId: Date.now() + Math.random() }, ...prev]);
+                        }
                     }
                 }
                 onClose(); 
             };
 
-            const handleBulkImport = () => {
-                const lines = csvText.split('\n');
-                const newMasterItems = [];
-
-                lines.forEach((line, index) => {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine) return;
-                    let parts = trimmedLine.includes('\t') ? trimmedLine.split('\t') : trimmedLine.includes(';') ? trimmedLine.split(';') : trimmedLine.includes(',') ? trimmedLine.split(',') : [trimmedLine];
-                    parts = parts.map(p => p ? p.trim().replace(/^"|"$/g, '') : '');
-                    
-                    if (parts.length >= 1 && parts[0]) {
-                        const name = parts[0];
-                        let item = { masterId: Date.now() + index + Math.random(), name: name, address: name, status: 'pending', notes: '', phone: '', mapLink: '', lat: 0, lng: 0 };
-                        if (parts.length === 2) {
-                            const locPart = parts[1];
-                            if (locPart.toLowerCase().startsWith('http')) item.mapLink = locPart;
-                            else {
-                                const coords = locPart.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-                                if (coords) { item.lat = parseFloat(coords[1]); item.lng = parseFloat(coords[2]); }
-                                else item.address = locPart;
-                            }
-                        } else if (parts.length >= 3) {
-                            item.address = parts[1] || name;
-                            const loc = parts[2];
-                            if (loc && loc.toLowerCase().startsWith('http')) item.mapLink = loc;
-                            else if (loc) {
-                                const coords = loc.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-                                if (coords) { item.lat = parseFloat(coords[1]); item.lng = parseFloat(coords[2]); }
-                            }
-                            if (parts.length > 3) item.phone = parts[3];
-                            if (parts.length > 4) item.notes = parts[4];
-                        }
-                        if (onAdd) onAdd({...item, id: Date.now() + index + Math.random() + 1});
-                        newMasterItems.push(item);
-                    }
-                });
-
-                if (newMasterItems.length > 0) {
-                    setMasterClients(prev => [...newMasterItems, ...prev]);
-                    setCsvText(''); onClose();
-                }
-            };
-
             const filteredMaster = masterClients.filter(c => c && c.name && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
             return (
-                <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm text-left">
                     <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-2xl h-[90dvh] sm:h-[80dvh] flex flex-col overflow-hidden animate-fade-in">
                         <div className="flex justify-between items-center p-5 border-b bg-slate-50">
-                            <h2 className="text-xl font-black flex items-center gap-2 text-slate-800">{initialData ? <Edit2 size={22} className="text-blue-600" /> : <Plus size={22} className="text-blue-600" />}{initialData ? 'EDITAR DATOS' : (view === 'settings' ? 'IMPORTAR A BASE MAESTRA' : 'AÑADIR A RUTA')}</h2>
+                            <h2 className="text-xl font-black flex items-center gap-2 text-slate-800">{initialData ? <Edit2 size={22} className="text-blue-600" /> : <Plus size={22} className="text-blue-600" />}{initialData ? 'EDITAR DATOS' : 'GESTIÓN DE CLIENTE'}</h2>
                             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={24} /></button>
                         </div>
                         {!initialData && (
                             <div className="flex border-b text-[10px] sm:text-xs uppercase tracking-widest font-black text-slate-500 bg-white shrink-0">
                                 {view !== 'settings' && <button onClick={() => setActiveTab('clients')} className={`flex-1 py-4 px-2 ${activeTab === 'clients' ? 'tab-active' : ''}`}>Mis Clientes</button>}
-                                <button onClick={() => setActiveTab('add')} className={`flex-1 py-4 px-2 ${activeTab === 'add' ? 'tab-active' : ''}`}>Carga Manual</button>
-                                <button onClick={() => setActiveTab('bulk')} className={`flex-1 py-4 px-2 ${activeTab === 'bulk' ? 'tab-active' : ''}`}>Importar Planilla</button>
+                                <button onClick={() => setActiveTab('add')} className={`flex-1 py-4 px-2 ${activeTab === 'add' ? 'tab-active' : ''}`}>Manual</button>
                             </div>
                         )}
-                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 no-scrollbar text-left">
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 no-scrollbar">
                             {activeTab === 'clients' && !initialData && (
                                 <div className="space-y-4">
-                                    <div className="relative">
-                                        <input type="text" placeholder="Buscar en tu base..." value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} className="w-full pl-10 p-4 bg-white border border-slate-200 rounded-2xl outline-none shadow-sm" />
-                                        <Search className="absolute left-3.5 top-4 text-slate-400" size={20} />
-                                    </div>
+                                    <div className="relative"><input type="text" placeholder="Buscar en base maestra..." value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} className="w-full pl-10 p-4 bg-white border border-slate-200 rounded-2xl outline-none shadow-sm" /><Search className="absolute left-3.5 top-4 text-slate-400" size={20} /></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-10">
-                                        {filteredMaster.length === 0 ? <p className="col-span-full text-center py-10 text-slate-400">No hay clientes guardados.</p> : filteredMaster.map(client => (
+                                        {filteredMaster.length === 0 ? <p className="col-span-full text-center py-10 text-slate-400 italic">No hay clientes guardados.</p> : filteredMaster.map(client => (
                                             <div key={client.masterId} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                                                 <div className="flex-1 min-w-0 mr-2"><h4 className="font-bold text-slate-800 text-sm truncate uppercase">{client.name}</h4><p className="text-[10px] text-slate-500 truncate">{client.address}</p></div>
                                                 <button onClick={() => onAdd({...client, id: Date.now() + Math.random(), status: 'pending'})} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Plus size={20} /></button>
@@ -286,24 +163,17 @@
                                             <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Link de Maps</label><input required value={newMapLink} onChange={e => setNewMapLink(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Pegar Link aquí" /></div>
                                         ) : (
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Latitud</label><input required type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Lat" /></div>
-                                                <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Longitud</label><input required type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-4 bg-blue-50 text-blue-700 border-none rounded-2xl text-sm" placeholder="Lng" /></div>
+                                                <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Latitud</label><input required type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} className="w-full p-4 bg-blue-50 border-none rounded-2xl text-sm" placeholder="Lat" /></div>
+                                                <div><label className="text-[10px] font-black uppercase text-slate-400 ml-1">Longitud</label><input required type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} className="w-full p-4 bg-blue-50 border-none rounded-2xl text-sm" placeholder="Lng" /></div>
                                             </div>
                                         )}
                                         <div className="grid grid-cols-2 gap-4"><input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Teléfono" /><input value={newNotes} onChange={e => setNewNotes(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm" placeholder="Notas" /></div>
                                         {!initialData && view !== 'settings' && (
-                                            <div className="flex items-center gap-3 pt-2"><input type="checkbox" id="masterCheck" checked={saveInMaster} onChange={(e) => setSaveInMaster(e.target.checked)} className="w-5 h-5 rounded-lg text-blue-600" /><label htmlFor="masterCheck" className="text-sm font-bold text-slate-600">Guardar permanentemente en Base</label></div>
+                                            <div className="flex items-center gap-3 pt-2"><input type="checkbox" id="masterCheck" checked={saveInMaster} onChange={(e) => setSaveInMaster(e.target.checked)} className="w-5 h-5 rounded-lg text-blue-600" /><label htmlFor="masterCheck" className="text-sm font-bold text-slate-600">Guardar en Base Maestra</label></div>
                                         )}
-                                        <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest">{initialData ? 'Guardar Cambios' : (view === 'settings' ? 'Guardar en Base Maestra' : 'Añadir a Ruta')}</button>
+                                        <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest">{initialData ? 'Guardar Cambios' : 'Guardar Cliente'}</button>
                                     </div>
                                 </form>
-                            )}
-                            {activeTab === 'bulk' && !initialData && (
-                                <div className="max-w-2xl mx-auto space-y-4">
-                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-4 text-left"><FileSpreadsheet size={32} className="text-blue-500 shrink-0" /><div className="text-[11px] text-blue-900 leading-tight"><p className="font-black uppercase mb-1">Carga Masiva</p><p className="opacity-80">Pega filas de Excel (Nombre, Link/Ubicación, Tel, Notas).</p></div></div>
-                                    <textarea value={csvText} onChange={e => setCsvText(e.target.value)} className="w-full h-48 p-4 bg-white border border-slate-200 rounded-3xl text-[11px] font-mono outline-none shadow-inner" placeholder={`Ej: Kiosco Pepe, https://maps.app...`} />
-                                    <button onClick={handleBulkImport} className="w-full bg-green-600 text-white py-5 rounded-2xl font-black shadow-xl transition-all hover:brightness-110 uppercase">Importar Datos</button>
-                                </div>
                             )}
                         </div>
                     </div>
@@ -320,10 +190,7 @@
                         {isPending && <div className="w-10 bg-slate-50 border-r border-slate-100 flex items-center justify-center cursor-grab text-slate-300 hover:text-blue-500" onDragStart={(e) => onDragStart(e, index)} onDragEnter={(e) => onDragEnter(e, index)} onDragEnd={onDragEnd} draggable={true} onDragOver={(e) => e.preventDefault()}><GripVertical size={20} /></div>}
                         <div className="flex-1 p-4 flex items-center justify-between cursor-pointer active:bg-slate-50" onClick={() => setIsOpen(!isOpen)}>
                             <div className="flex-1 min-w-0 pr-3 text-left">
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`font-black text-slate-800 text-sm sm:text-base truncate uppercase ${!isPending && 'line-through'}`}>{item.name}</h3>
-                                    {!isPending && (item.status === 'delivered' ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />)}
-                                </div>
+                                <div className="flex items-center gap-2"><h3 className={`font-black text-slate-800 text-sm sm:text-base truncate uppercase ${!isPending && 'line-through'}`}>{item.name}</h3>{!isPending && (item.status === 'delivered' ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />)}</div>
                                 <div className="flex items-center text-slate-500 text-[10px] sm:text-xs mt-1"><MapPin size={12} className="mr-1.5 text-blue-500" /><span className="truncate">{item.address}</span></div>
                             </div>
                             <button className="text-slate-400"><ChevronDown size={24} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} /></button>
@@ -331,25 +198,10 @@
                     </div>
                     {isOpen && (
                         <div className={`px-5 pb-5 pt-1 bg-white ${isPending ? 'ml-10' : ''}`}>
-                            <div className="flex justify-between items-start mb-4">
-                                {item.notes ? <div className="text-[11px] p-3 bg-blue-50 text-blue-900 rounded-xl italic leading-tight flex-1 mr-2">"{item.notes}"</div> : <div className="flex-1"></div>}
-                                <div className="flex gap-1">
-                                    <button onClick={() => onEdit(item)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={20} /></button>
-                                    <button onClick={() => onDelete(item.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20} /></button>
-                                </div>
-                            </div>
+                            <div className="flex justify-between items-start mb-4 text-left">{item.notes ? <div className="text-[11px] p-3 bg-blue-50 text-blue-900 rounded-xl italic leading-tight flex-1 mr-2">"{item.notes}"</div> : <div className="flex-1"></div>}<div className="flex gap-1"><button onClick={() => onEdit(item)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-xl"><Edit2 size={20} /></button><button onClick={() => onDelete(item.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl"><Trash2 size={20} /></button></div></div>
                             <div className="flex items-center justify-between gap-3">
                                 {isPending ? (
-                                    <>
-                                        <div className="flex gap-3">
-                                            <button onClick={() => onNavigate(item)} className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all">{item.mapLink ? <LinkIcon size={28} /> : <Navigation size={28} />}</button>
-                                            {item.phone && <button onClick={() => window.open(`tel:${item.phone}`, '_self')} className="bg-slate-100 text-slate-600 border border-slate-200 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all"><Phone size={28} /></button>}
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <button onClick={() => onStatusChange(item.id, 'failed')} className="bg-white text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-red-100 active:scale-90 transition-all"><XCircle size={32} /></button>
-                                            <button onClick={() => onStatusChange(item.id, 'delivered')} className="bg-green-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"><CheckCircle size={32} /></button>
-                                        </div>
-                                    </>
+                                    <><div className="flex gap-3"><button onClick={() => onNavigate(item)} className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all">{item.mapLink ? <LinkIcon size={28} /> : <Navigation size={28} />}</button>{item.phone && <button onClick={() => window.open(`tel:${item.phone}`, '_self')} className="bg-slate-100 text-slate-600 border border-slate-200 w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-all"><Phone size={28} /></button>}</div><div className="flex gap-3"><button onClick={() => onStatusChange(item.id, 'failed')} className="bg-white text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-red-100 active:scale-90 transition-all"><XCircle size={32} /></button><button onClick={() => onStatusChange(item.id, 'delivered')} className="bg-green-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"><CheckCircle size={32} /></button></div></>
                                 ) : (
                                     <div className="flex justify-end w-full items-center"><button onClick={() => onStatusChange(item.id, 'pending')} className="text-slate-700 text-[10px] font-black uppercase tracking-widest px-5 py-3 bg-slate-200 rounded-full active:scale-95 transition-all">REHACER</button></div>
                                 )}
@@ -414,9 +266,8 @@
                 localStorage.setItem('rutafacil_master', JSON.stringify(masterClients));
             }, [routes, masterClients]);
 
-            const activeRoute = routes.find(r => r.id === activeRouteId);
-            const activeItems = activeRoute ? activeRoute.items : [];
-            const allItems = useMemo(() => routes.flatMap(r => r.items), [routes]);
+            const activeRoute = useMemo(() => routes.find(r => String(r.id) === String(activeRouteId)), [routes, activeRouteId]);
+            const activeItems = useMemo(() => activeRoute ? activeRoute.items : [], [activeRoute]);
 
             const filteredItems = useMemo(() => {
                 return (activeItems || []).filter(it => {
@@ -436,15 +287,19 @@
 
             const handleModalSubmit = (value) => {
                 if (modalConfig.type === 'createRoute') {
-                    const newRoute = { id: Date.now(), name: value, date: new Date().toLocaleDateString(), items: [] };
-                    setRoutes([newRoute, ...routes]);
+                    const newId = Date.now();
+                    const newRoute = { id: newId, name: value, date: new Date().toLocaleDateString(), items: [] };
+                    setRoutes(prev => [newRoute, ...prev]);
                 } else if (modalConfig.type === 'renameRoute') {
-                    setRoutes(routes.map(r => r.id === modalConfig.data ? {...r, name: value} : r));
+                    setRoutes(prev => prev.map(r => r.id === modalConfig.data ? {...r, name: value} : r));
                 }
                 closeModal();
             };
 
-            const updateRouteItems = (newItems) => { setRoutes(routes.map(r => r.id === activeRouteId ? {...r, items: newItems} : r)); };
+            const updateRouteItems = (newItems) => { 
+                setRoutes(prev => prev.map(r => String(r.id) === String(activeRouteId) ? {...r, items: newItems} : r)); 
+            };
+
             const handleUpdateClient = (updatedData) => {
                 if (view === 'settings') setMasterClients(masterClients.map(c => c.masterId === updatedData.masterId ? updatedData : c));
                 else updateRouteItems(activeItems.map(c => c.id === updatedData.id ? updatedData : c));
@@ -455,17 +310,32 @@
                 try {
                     const file = new File([bundleString], filename, { type: 'application/json' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file], title: filename.split('.')[0], text: 'Datos compartidos desde RutaFácil Pro.' });
+                        await navigator.share({ files: [file], title: filename.split('.')[0], text: 'Compartido desde RutaFácil.' });
                         return;
                     }
                 } catch (e) { }
-                window.open(`https://wa.me/?text=${encodeURIComponent('RutaFácil Backup: ' + bundleString.substring(0, 1000))}`, '_blank');
+                window.open(`https://wa.me/?text=${encodeURIComponent('Backup: ' + bundleString.substring(0, 500))}`, '_blank');
             };
 
-            const handleShareSpecificRoute = () => {
+            const downloadFile = (bundle, filename) => {
+                const bundleString = JSON.stringify(bundle, null, 2);
+                const blob = new Blob([bundleString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleShareSpecificRoute = (mode = 'share') => {
                 if (!activeRoute) return;
                 const bundle = { type: 'single_route', route: activeRoute, version: '2.0' };
-                shareContent(bundle, `ruta_${activeRoute.name.replace(/\s+/g, '_')}.json`);
+                const fname = `ruta_${activeRoute.name.replace(/\s+/g, '_')}.json`;
+                if (mode === 'download') downloadFile(bundle, fname);
+                else shareContent(bundle, fname);
             };
 
             const dragItem = useRef(null);
@@ -486,8 +356,8 @@
                 const [inputValue, setInputValue] = useState(modalConfig.type === 'renameRoute' ? (routes.find(r => r.id === modalConfig.data)?.name || '') : '');
                 if (!modalConfig.isOpen) return null;
                 return (
-                    <div className="fixed inset-0 z-[110] modal-overlay flex items-center justify-center p-6 backdrop-blur-sm">
-                        <div className="bg-white rounded-[2rem] w-full max-w-sm p-6 shadow-2xl animate-fade-in text-left">
+                    <div className="fixed inset-0 z-[110] modal-overlay flex items-center justify-center p-6 backdrop-blur-sm text-left">
+                        <div className="bg-white rounded-[2rem] w-full max-w-sm p-6 shadow-2xl animate-fade-in">
                             <h3 className="text-lg font-black uppercase mb-4 text-slate-800">{modalConfig.title}</h3>
                             <input autoFocus value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="w-full p-4 bg-slate-100 border-none rounded-2xl outline-none mb-6 shadow-inner" placeholder="Escribe aquí..." />
                             <div className="flex gap-3">
@@ -507,12 +377,12 @@
                             {isFabMenuOpen && (
                                 <div className="flex flex-col items-end gap-3 mb-2 animate-fade-in">
                                     <div className="flex items-center gap-3">
-                                        <span className="bg-slate-800 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg">Ajustes Sistema</span>
+                                        <span className="bg-slate-800 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg">Ajustes</span>
                                         <button onClick={() => { setView('settings'); setIsFabMenuOpen(false); }} className="w-12 h-12 bg-white text-slate-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all"><Settings size={22} /></button>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="bg-slate-800 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-lg">Nueva Ruta</span>
-                                        <button onClick={() => openModal('createRoute', 'Nueva Ruta')} className="w-12 h-12 bg-white text-blue-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all"><Folder size={22} /></button>
+                                        <button onClick={() => openModal('createRoute', 'Nueva Ruta')} className="w-12 h-12 bg-white text-blue-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all"><Plus size={22} /></button>
                                     </div>
                                 </div>
                             )}
@@ -554,9 +424,10 @@
                                                 <div className="mt-4"><h3 className="font-black text-slate-800 uppercase text-sm truncate">{route.name}</h3><p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{route.date} • {route.items.length} Clientes</p></div>
                                             </div>
                                         ))}
+                                        {(!routes || routes.length === 0) && <div className="col-span-full py-20 text-center text-slate-300 font-bold uppercase tracking-widest italic">No hay rutas creadas</div>}
                                     </div>
                                 ) : (
-                                    <div className="h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white bg-slate-200"><SimpleMap deliveries={allItems} onSelect={(d) => { const r = routes.find(r => r.items.some(it => it.id === d.id)); if (r) { setActiveRouteId(r.id); setSearchTerm(d.name); setView('list'); } }} /></div>
+                                    <div className="h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white bg-slate-200"><SimpleMap deliveries={routes.flatMap(r=>r.items)} onSelect={(d) => { const r = routes.find(r => r.items.some(it => it.id === d.id)); if (r) { setActiveRouteId(r.id); setSearchTerm(d.name); setView('list'); } }} /></div>
                                 )}
                             </main>
                         </div>
@@ -566,28 +437,23 @@
                 if (view === 'settings') {
                     return (
                         <div className="flex flex-col h-full bg-slate-50 relative text-left">
-                            <header className="bg-slate-800 text-white p-6 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-4"><button onClick={() => setView('dashboard')} className="p-2 hover:bg-white/10 rounded-xl"><ChevronLeft size={24} /></button><h2 className="text-xl font-black uppercase tracking-tight">Gestión del Sistema</h2></div>
-                            </header>
+                            <header className="bg-slate-800 text-white p-6 flex items-center justify-between shrink-0"><div className="flex items-center gap-4"><button onClick={() => setView('dashboard')} className="p-2 hover:bg-white/10 rounded-xl"><ChevronLeft size={24} /></button><h2 className="text-xl font-black uppercase tracking-tight">Sistema</h2></div></header>
                             <main className="main-scroll-area p-6 space-y-8 no-scrollbar pb-24">
                                 <section className={`bg-white rounded-[2.5rem] border-2 transition-all shadow-sm overflow-hidden ${isMasterSectionExpanded ? 'border-blue-400' : 'border-slate-100'}`}>
                                     <div className="p-6 cursor-pointer flex items-center justify-between" onClick={() => setIsMasterSectionExpanded(!isMasterSectionExpanded)}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-3 rounded-2xl ${isMasterSectionExpanded ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}`}><Database size={24} /></div>
-                                            <div><h3 className="font-black uppercase tracking-widest text-sm">Base Maestra</h3><p className="text-[10px] text-slate-400 uppercase font-bold">{masterClients.length} Clientes</p></div>
-                                        </div>
+                                        <div className="flex items-center gap-3"><div className={`p-3 rounded-2xl ${isMasterSectionExpanded ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}`}><Database size={24} /></div><div><h3 className="font-black uppercase tracking-widest text-sm">Base Maestra</h3><p className="text-[10px] text-slate-400 uppercase font-bold">{masterClients.length} Clientes</p></div></div>
                                         <ChevronDown size={24} className={`text-slate-300 transition-transform ${isMasterSectionExpanded ? 'rotate-180' : ''}`} />
                                     </div>
                                     {isMasterSectionExpanded && (
                                         <div className="px-6 pb-6 animate-fade-in">
                                             <div className="flex flex-col sm:flex-row gap-4 mb-6 pt-4 border-t"><div className="relative flex-1"><input type="text" placeholder="Buscador inteligente..." value={masterSearchTerm} onChange={(e) => setMasterSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-2xl text-sm outline-none" /><Search className="absolute left-4 top-4 text-slate-400" size={20} /></div><button onClick={() => { setEditingClient(null); setIsManagerOpen(true); }} className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black uppercase text-xs shadow-lg">+ Nuevo</button></div>
-                                            <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto pr-2">
+                                            <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
                                                 {filteredMaster.map(c => {
                                                     const isCardOpen = expandedMasterId === c.masterId;
                                                     return (
                                                         <div key={c.masterId} className={`bg-slate-50 rounded-2xl border transition-all cursor-pointer overflow-hidden ${isCardOpen ? 'border-blue-200 bg-white ring-1 ring-blue-100' : 'border-slate-100 hover:border-slate-200'}`} onClick={() => setExpandedMasterId(isCardOpen ? null : c.masterId)}>
                                                             <div className="p-4 flex justify-between items-center"><div className="min-w-0 flex-1"><h5 className="font-black text-slate-800 text-xs uppercase truncate">{c.name}</h5><p className="text-[9px] text-slate-400 truncate mt-0.5">{c.address}</p></div><ChevronDown size={16} className={`text-slate-300 transition-transform ${isCardOpen ? 'rotate-180' : ''}`} /></div>
-                                                            {isCardOpen && <div className="px-4 pb-4 animate-fade-in"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px]">{c.phone && <div className="bg-white p-2 rounded-lg border flex items-center gap-2"><Phone size={12} className="text-blue-500"/> {c.phone}</div>}{(c.lat || c.mapLink) && <div className="bg-blue-50 p-2 rounded-lg border flex items-center gap-2 text-blue-600"><MapPin size={12}/> Ubicación</div>}</div>{c.notes && <div className="mt-3 p-3 bg-white border rounded-xl text-[10px] text-slate-500 italic">"{c.notes}"</div>}<div className="mt-4 flex justify-end gap-2 pt-3 border-t"><button onClick={(e) => { e.stopPropagation(); setEditingClient(c); setIsManagerOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={20}/></button><button onClick={(e) => { e.stopPropagation(); if(confirm(`¿Eliminar a ${c.name}?`)) setMasterClients(masterClients.filter(m => m.masterId !== c.masterId)); }} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 size={20}/></button></div></div>}
+                                                            {isCardOpen && <div className="px-4 pb-4 animate-fade-in"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px]">{c.phone && <div className="bg-white p-2 rounded-lg border flex items-center gap-2"><Phone size={12} className="text-blue-500"/> {c.phone}</div>}{(c.lat || c.mapLink) && <div className="bg-blue-50 p-2 rounded-lg border flex items-center gap-2 text-blue-600"><MapPin size={12}/> Ubicación</div>}</div><div className="mt-4 flex justify-end gap-2 pt-3 border-t"><button onClick={(e) => { e.stopPropagation(); setEditingClient(c); setIsManagerOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={20}/></button><button onClick={(e) => { e.stopPropagation(); if(confirm(`¿Eliminar?`)) setMasterClients(masterClients.filter(m => m.masterId !== c.masterId)); }} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 size={20}/></button></div></div>}
                                                         </div>
                                                     );
                                                 })}
@@ -596,31 +462,32 @@
                                     )}
                                 </section>
                                 <section className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
-                                    <div className="bg-blue-600 text-white p-8 rounded-[3rem] shadow-lg"><h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2"><Download size={24}/> Backup Total</h3><p className="text-xs opacity-70 mb-6">Guarda todas las rutas y clientes.</p><div className="flex flex-col gap-2 w-full mt-6"><button onClick={() => { const bundle = { type: 'full_backup', routes, master: masterClients, version: '2.0' }; shareContent(bundle, `respaldo_total_rutafacil.json`); }} className="w-full bg-white text-blue-600 p-4 rounded-2xl font-black text-xs uppercase shadow-md flex items-center justify-center gap-2">Compartir Todo</button></div></div>
-                                    <div className="bg-white p-8 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-center"><Upload className="text-slate-300 mb-4" size={48} /><h3 className="font-black text-slate-800 uppercase text-lg">Restaurar Datos</h3><p className="text-[10px] text-slate-400 mt-2">Soporta respaldo completo o ruta única.</p><input type="file" id="sys-restore" className="hidden" accept=".json" onChange={(e) => {
-                                        if(!e.target.files.length) return;
-                                        const r = new FileReader(); r.readAsText(e.target.files[0]);
-                                        r.onload = (event) => {
-                                            try {
-                                                const res = JSON.parse(event.target.result);
-                                                // DETECCIÓN DE TIPO DE RESPALDO
-                                                if (res.type === 'single_route' || res.route) {
-                                                    const newRoute = res.route || res;
-                                                    newRoute.id = Date.now(); // Nueva ID para evitar conflictos
-                                                    setRoutes([newRoute, ...routes]);
-                                                    alert("Ruta añadida con éxito.");
-                                                } else if (res.type === 'full_backup' || res.routes) {
-                                                    if (confirm("Se detectó un respaldo completo. ¿Deseas REEMPLAZAR tus datos actuales?\n(Cancelar para COMBINAR las rutas)")) {
-                                                        setRoutes(res.routes || []); setMasterClients(res.master || []);
-                                                    } else {
-                                                        setRoutes([...(res.routes || []), ...routes]);
-                                                        setMasterClients([...(res.master || []), ...masterClients]);
+                                    <div className="bg-blue-600 text-white p-8 rounded-[3rem] shadow-lg">
+                                        <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2"><Download size={24}/> Backup Total</h3>
+                                        <p className="text-xs opacity-70 mb-6 italic leading-tight">Guarda todo el historial de rutas y tu base de datos maestra.</p>
+                                        <div className="flex flex-col gap-2 w-full mt-6">
+                                            <button onClick={() => { const b = { type: 'full_backup', routes, master: masterClients, version: '2.0' }; shareContent(b, `backup_total.json`); }} className="w-full bg-white/20 text-white p-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2">Compartir (Apps)</button>
+                                            <button onClick={() => { const b = { type: 'full_backup', routes, master: masterClients, version: '2.0' }; downloadFile(b, `respaldo_total_rutafacil.json`); }} className="w-full bg-white text-blue-600 p-4 rounded-2xl font-black text-xs uppercase shadow-xl flex items-center justify-center gap-2"><Download size={18} /> Descargar Archivo</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-8 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+                                        <Upload className="text-slate-300 mb-4" size={48} /><h3 className="font-black text-slate-800 uppercase text-lg leading-tight">Restaurar Datos</h3><p className="text-[10px] text-slate-400 mt-2">Carga un respaldo total o una ruta enviada por otro conductor.</p><input type="file" id="sys-restore" className="hidden" accept=".json" onChange={(e) => {
+                                            if(!e.target.files.length) return;
+                                            const r = new FileReader(); r.readAsText(e.target.files[0]);
+                                            r.onload = (event) => {
+                                                try {
+                                                    const res = JSON.parse(event.target.result);
+                                                    if (res.type === 'single_route' || res.route) {
+                                                        const nr = res.route || res; nr.id = Date.now();
+                                                        setRoutes(p => [nr, ...p]); alert("Ruta añadida.");
+                                                    } else if (res.type === 'full_backup' || res.routes) {
+                                                        if (confirm("¿Reemplazar datos actuales?\n(Aceptar = Limpiar y restaurar | Cancelar = Combinar)")) { setRoutes(res.routes || []); setMasterClients(res.master || []); }
+                                                        else { setRoutes(p => [...(res.routes || []), ...p]); setMasterClients(p => [...(res.master || []), ...p]); }
+                                                        alert("Importación finalizada.");
                                                     }
-                                                    alert("Importación completa finalizada.");
-                                                } else { alert("Formato no reconocido."); }
-                                            } catch(err) { alert("Error al leer archivo JSON."); }
-                                        };
-                                    }} /><button onClick={() => document.getElementById('sys-restore').click()} className="bg-orange-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs mt-6 shadow-xl active:scale-95 transition-all">Importar Archivo</button></div>
+                                                } catch(err) { alert("Error al leer archivo."); }
+                                            };
+                                        }} /><button onClick={() => document.getElementById('sys-restore').click()} className="bg-orange-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs mt-6 shadow-xl active:scale-95 transition-all">Seleccionar Archivo</button></div>
                                 </section>
                             </main>
                         </div>
@@ -631,10 +498,11 @@
                     <div className="flex flex-col h-full bg-slate-50 relative text-left">
                         <header className={`${isOnline ? 'bg-blue-600' : 'bg-slate-700'} text-white px-6 pt-6 pb-5 shadow-lg rounded-b-[2.5rem] shrink-0 z-10`}>
                             <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-3"><button onClick={() => setView('dashboard')} className="p-2 bg-white/20 rounded-xl"><ChevronLeft size={24} /></button><div><h1 className="text-xl font-black uppercase truncate max-w-[150px]">{activeRoute?.name || 'Ruta'}</h1><p className="text-[10px] font-black opacity-80 uppercase italic">Gestión</p></div></div>
-                                <div className="flex gap-2">
-                                    <button onClick={handleShareSpecificRoute} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all" title="Compartir esta ruta"><Share size={24} /></button>
-                                    <button onClick={() => { if(confirm("¿Reiniciar estados?")) updateRouteItems(activeItems.map(i=>({...i, status:'pending'}))) }} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all"><RotateCcw size={24} /></button>
+                                <div className="flex items-center gap-3"><button onClick={() => setView('dashboard')} className="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-all"><ChevronLeft size={24} /></button><div><h1 className="text-xl font-black uppercase truncate max-w-[130px]">{activeRoute?.name || 'Cargando...'}</h1><p className="text-[10px] font-black opacity-80 uppercase italic mt-1">Gestión de Ruta</p></div></div>
+                                <div className="flex gap-1.5">
+                                    <button onClick={() => handleShareSpecificRoute('share')} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all" title="Compartir vía Apps"><Share size={24} /></button>
+                                    <button onClick={() => handleShareSpecificRoute('download')} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all" title="Descargar como Archivo"><Download size={24} /></button>
+                                    <button onClick={() => { if(confirm("¿Reiniciar?")) updateRouteItems(activeItems.map(i=>({...i, status:'pending'}))) }} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all"><RotateCcw size={24} /></button>
                                 </div>
                             </div>
                             <div className="bg-white/10 rounded-full h-2 mb-2"><div className="bg-green-400 h-full transition-all duration-1000" style={{ width: `${progress}%` }}></div></div>
@@ -643,18 +511,22 @@
                         <div className="px-6 py-4 space-y-4 bg-slate-50 shadow-inner shrink-0">
                             <div className="flex flex-col sm:flex-row gap-4 items-center">
                                 <div className="flex bg-slate-200 p-1.5 rounded-2xl shadow-inner w-full sm:w-auto"><button onClick={() => setView('list')} className={`flex-1 px-6 py-2 rounded-xl transition-all font-black text-xs uppercase ${view === 'list' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}>Lista</button><button onClick={() => setView('map')} className={`flex-1 px-6 py-2 rounded-xl transition-all font-black text-xs uppercase ${view === 'map' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500'}`}>Mapa</button></div>
-                                <div className="relative flex-1 w-full"><input type="text" placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border rounded-2xl text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500" /><Search className="absolute left-4 top-4 text-slate-400" size={20} /></div>
+                                <div className="relative flex-1 w-full"><input type="text" placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500" /><Search className="absolute left-4 top-4 text-slate-400" size={20} /></div>
                             </div>
                         </div>
                         <main className="main-scroll-area px-6 pb-6 relative">
                             {view === 'map' ? (
-                                <div className="h-full rounded-[2.5rem] overflow-hidden bg-slate-200"><SimpleMap deliveries={activeItems} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} /></div>
+                                <div className="h-full rounded-[2.5rem] overflow-hidden shadow-xl bg-slate-200 border-4 border-white"><SimpleMap deliveries={activeItems} onSelect={(d) => { setSearchTerm(d.name); setView('list'); }} /></div>
                             ) : (
                                 <div className="h-full space-y-4 pb-32 no-scrollbar">
                                     <div className="flex gap-2 sticky top-0 bg-slate-50/90 py-2 z-10">{['all', 'pending', 'completed'].map(f => (<button key={f} onClick={() => setFilter(f)} className={`flex-1 py-3 rounded-xl text-[10px] font-black border-2 uppercase transition-all ${filter === f ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-500 border-slate-100'}`}>{f === 'all' ? 'Todos' : f === 'pending' ? 'Pendientes' : 'Listos'}</button>))}</div>
-                                    <div className="client-grid">
-                                        {filteredItems.map((item, index) => (<DeliveryCard key={item.id} index={index} item={item} onNavigate={(it) => it.mapLink ? window.open(it.mapLink, '_blank') : window.open(`https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lng}`, '_blank')} onStatusChange={(id, s) => updateRouteItems(activeItems.map(i => i.id === id ? {...i, status: s} : i))} onDelete={(id) => { if(confirm("¿Eliminar?")) updateRouteItems(activeItems.filter(i => i.id !== id)) }} onEdit={(c) => { setEditingClient(c); setIsManagerOpen(true); }} onDragStart={(e, pos) => {dragItem.current=pos}} onDragEnter={(e, pos) => {dragOverItem.current=pos}} onDragEnd={handleDragEnd} />))}
-                                    </div>
+                                    {filteredItems.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 animate-fade-in"><MapPin size={48} className="opacity-10 mb-2" /><p className="text-xs font-black uppercase tracking-widest">Sin entregas para mostrar</p></div>
+                                    ) : (
+                                        <div className="client-grid">
+                                            {filteredItems.map((item, index) => (<DeliveryCard key={item.id} index={index} item={item} onNavigate={(it) => it.mapLink ? window.open(it.mapLink, '_blank') : window.open(`https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lng}`, '_blank')} onStatusChange={(id, s) => updateRouteItems(activeItems.map(i => i.id === id ? {...i, status: s} : i))} onDelete={(id) => { if(confirm("¿Eliminar?")) updateRouteItems(activeItems.filter(i => i.id !== id)) }} onEdit={(c) => { setEditingClient(c); setIsManagerOpen(true); }} onDragStart={(e, pos) => {dragItem.current=pos}} onDragEnter={(e, pos) => {dragOverItem.current=pos}} onDragEnd={handleDragEnd} />))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </main>
@@ -663,7 +535,7 @@
             };
 
             return (
-                <div className="flex flex-col w-full h-full md:max-w-6xl mx-auto shadow-2xl relative bg-white overflow-hidden">
+                <div className="flex flex-col w-full h-full md:max-w-6xl mx-auto shadow-2xl relative bg-white overflow-hidden border-x border-slate-100">
                     <PromptModal />
                     {renderView()}
                     <FAB />

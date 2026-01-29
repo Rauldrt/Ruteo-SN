@@ -73,11 +73,14 @@
         }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         
-        /* Asegurar que el main ocupe el espacio restante y permita scroll */
         .main-scroll-area {
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+        }
+
+        .expandable-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
@@ -432,6 +435,8 @@
             });
             const [isManagerOpen, setIsManagerOpen] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
+            const [masterSearchTerm, setMasterSearchTerm] = useState(''); 
+            const [expandedMasterId, setExpandedMasterId] = useState(null); 
             const [filter, setFilter] = useState('all');
             const [modalConfig, setModalConfig] = useState({ isOpen: false, type: '', title: '', data: null });
             
@@ -457,6 +462,16 @@
                     return matchSearch && matchFilter;
                 });
             }, [activeItems, searchTerm, filter]);
+
+            const filteredMaster = useMemo(() => {
+                const search = masterSearchTerm.toLowerCase();
+                return (masterClients || []).filter(c => 
+                    c.name?.toLowerCase().includes(search) || 
+                    c.address?.toLowerCase().includes(search) || 
+                    c.notes?.toLowerCase().includes(search) || 
+                    c.phone?.includes(search)
+                );
+            }, [masterClients, masterSearchTerm]);
 
             const openModal = (type, title, data = null) => {
                 setModalConfig({ isOpen: true, type, title, data });
@@ -615,35 +630,107 @@
                                     <h2 className="text-xl font-black uppercase tracking-tight">Gestión del Sistema</h2>
                                 </div>
                             </header>
-                            <main className="main-scroll-area p-6 space-y-8 no-scrollbar pb-20">
+                            <main className="main-scroll-area p-6 space-y-8 no-scrollbar pb-24">
                                 <section className="bg-white rounded-[2.5rem] p-6 border-2 border-slate-100 shadow-sm relative text-left">
-                                    <div className="flex justify-between items-center mb-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                         <div className="flex items-center gap-3">
                                             <Database className="text-blue-600" size={28} />
-                                            <h3 className="font-black uppercase tracking-widest text-sm">Base Maestra de Clientes</h3>
+                                            <h3 className="font-black uppercase tracking-widest text-sm">Base Maestra</h3>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => setIsManagerOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg hover:brightness-110 active:scale-95 transition-all">+ Nuevo</button>
+                                            <button onClick={() => setIsManagerOpen(true)} className="flex-1 sm:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-lg hover:brightness-110 transition-all">+ Nuevo</button>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {(masterClients || []).map(c => (
-                                            <div key={c.masterId} className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-100 transition-all hover:bg-white text-left">
-                                                <div className="min-w-0 mr-2 flex-1">
-                                                    <h5 className="font-bold text-slate-800 text-xs uppercase truncate">{c.name}</h5>
-                                                    <p className="text-[10px] text-slate-400 truncate">{c.address}</p>
+
+                                    <div className="relative mb-6">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Buscar por nombre, dirección, notas..." 
+                                            value={masterSearchTerm} 
+                                            onChange={(e) => setMasterSearchTerm(e.target.value)} 
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner" 
+                                        />
+                                        <Search className="absolute left-4 top-4 text-slate-400" size={20} />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {filteredMaster.map(c => {
+                                            const isExpanded = expandedMasterId === c.masterId;
+                                            return (
+                                                <div 
+                                                    key={c.masterId} 
+                                                    className={`expandable-card bg-white rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${isExpanded ? 'border-blue-400 shadow-lg' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'}`}
+                                                    onClick={() => setExpandedMasterId(isExpanded ? null : c.masterId)}
+                                                >
+                                                    <div className="p-4 flex justify-between items-center">
+                                                        <div className="min-w-0 flex-1">
+                                                            <h5 className="font-black text-slate-800 text-sm uppercase truncate">{c.name}</h5>
+                                                            <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                                                                <MapPin size={10} className="text-blue-500" /> {c.address}
+                                                            </p>
+                                                        </div>
+                                                        <ChevronDown size={20} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                    </div>
+                                                    
+                                                    {isExpanded && (
+                                                        <div className="px-4 pb-4 pt-1 bg-slate-50/50 border-t border-slate-50 animate-fade-in text-[11px]">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                                                {c.phone && (
+                                                                    <div>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Teléfono</span>
+                                                                        <div className="flex items-center gap-2 text-slate-700 font-bold bg-white p-2 rounded-lg border border-slate-100">
+                                                                            <Phone size={14} className="text-blue-500" /> {c.phone}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {(c.mapLink || (c.lat && c.lng)) && (
+                                                                    <div>
+                                                                        <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Ubicación</span>
+                                                                        <div className="flex items-center gap-2 text-blue-600 font-bold bg-blue-50 p-2 rounded-lg border border-blue-100 truncate">
+                                                                            <LinkIcon size={14} /> {c.mapLink ? 'Link de Google Maps' : `${c.lat}, ${c.lng}`}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {c.notes && (
+                                                                <div className="mt-4">
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Notas</span>
+                                                                    <div className="p-3 bg-white border border-slate-100 rounded-xl text-slate-600 italic leading-relaxed">
+                                                                        "{c.notes}"
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex justify-end mt-4 pt-3 border-t border-slate-100">
+                                                                <button 
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        if(confirm(`¿Eliminar a ${c.name} de la base maestra?`)) {
+                                                                            setMasterClients(masterClients.filter(m => m.masterId !== c.masterId));
+                                                                        }
+                                                                    }} 
+                                                                    className="flex items-center gap-2 text-red-500 hover:text-red-700 font-black uppercase text-[10px] px-3 py-2 rounded-lg hover:bg-red-50 transition-all"
+                                                                >
+                                                                    <Trash2 size={14} /> Eliminar Cliente
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <button onClick={() => setMasterClients(masterClients.filter(m => m.masterId !== c.masterId))} className="text-red-300 hover:text-red-500 transition-colors p-2"><Trash2 size={18} /></button>
+                                            );
+                                        })}
+                                        {filteredMaster.length === 0 && (
+                                            <div className="py-20 text-center">
+                                                <Search size={40} className="mx-auto mb-4 text-slate-200" />
+                                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No se encontraron clientes</p>
                                             </div>
-                                        ))}
-                                        {(!masterClients || masterClients.length === 0) && <p className="col-span-full py-10 text-center text-slate-300">Base vacía.</p>}
+                                        )}
                                     </div>
                                 </section>
 
                                 <section className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left pb-10">
                                     <div className="bg-blue-600 text-white p-8 rounded-[3rem] shadow-lg flex flex-col justify-between items-start">
-                                        <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2"><Download size={24}/> Backup Total</h3>
-                                        <p className="text-sm opacity-80 mb-6 leading-tight">Respalda tus rutas y base maestra en un archivo .json o envíalo por WhatsApp.</p>
+                                        <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2"><Download size={24}/> Backup</h3>
+                                        <p className="text-sm opacity-80 mb-6 leading-tight">Exporta todos tus datos para guardarlos en otro lugar.</p>
                                         <div className="flex flex-col gap-2 w-full">
                                             <button onClick={() => {
                                                 const bundle = { routes, master: masterClients };
@@ -656,7 +743,7 @@
                                     <div className="bg-white p-8 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
                                         <Upload className="text-slate-300 mb-4" size={48} />
                                         <h3 className="font-black text-slate-800 uppercase text-lg leading-tight">Restaurar</h3>
-                                        <p className="text-xs text-slate-400 mt-2 mb-6">Carga un archivo de respaldo previo.</p>
+                                        <p className="text-xs text-slate-400 mt-2 mb-6">Carga un respaldo previo.</p>
                                         <input type="file" id="sys-restore" className="hidden" accept=".json" onChange={(e) => {
                                             if(!e.target.files.length) return;
                                             const r = new FileReader(); r.readAsText(e.target.files[0]);
